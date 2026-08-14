@@ -94,8 +94,8 @@
     flex-direction:column;
     align-items:center;
     justify-content:center;
-    min-width:70px;
-    height:70px;
+    min-width:84px;
+    height:84px;
     background:#fff;
     border:2px solid var(--border);
     border-radius:var(--radius-md);
@@ -111,8 +111,8 @@
     0%,100%{transform:scale(1);}
     50%{transform:scale(1.06);}
   }
-  .sentence-chip img{width:38px;height:38px;object-fit:contain;}
-  .sentence-chip span{font-size:10px;text-align:center;line-height:1.1;margin-top:2px;}
+  .sentence-chip img{width:46px;height:46px;object-fit:contain;}
+  .sentence-chip span{font-size:11px;text-align:center;line-height:1.1;margin-top:2px;}
   .sentence-empty{color:#999;font-size:14px;padding-left:8px;}
 
   .bar-btn{
@@ -173,8 +173,8 @@
   #grid{
     flex:1;
     display:grid;
-    grid-template-columns:repeat(auto-fill, minmax(118px, 1fr));
-    gap:12px;
+    grid-template-columns:repeat(auto-fill, minmax(160px, 1fr));
+    gap:14px;
     padding:6px 16px 20px;
     overflow-y:auto;
     align-content:start;
@@ -186,10 +186,10 @@
     justify-content:flex-end;
     background:#fff;
     border:2px solid var(--border);
-    border-top-width:6px;
+    border-top-width:8px;
     border-radius:var(--radius-md);
-    min-height:126px;
-    padding:6px 4px 8px;
+    min-height:180px;
+    padding:10px 6px 12px;
     cursor:pointer;
     user-select:none;
     -webkit-tap-highlight-color:transparent;
@@ -208,9 +208,15 @@
     40%{transform:scale(1.08);}
     100%{transform:scale(1);}
   }
-  .symbol-btn img{width:60px;height:60px;object-fit:contain;margin-bottom:6px;}
-  .symbol-btn .fallback-emoji{font-size:38px;margin-bottom:6px;}
-  .symbol-btn span{font-size:14px;font-weight:700;text-align:center;line-height:1.15;}
+  .symbol-btn img{width:92px;height:92px;object-fit:contain;margin-bottom:8px;}
+  .symbol-btn .fallback-emoji{font-size:56px;margin-bottom:8px;}
+  .symbol-btn span{font-size:17px;font-weight:700;text-align:center;line-height:1.2;}
+
+  @media (min-width: 900px){
+    #grid{ grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); }
+    .symbol-btn{ min-height:200px; }
+    .symbol-btn img{ width:104px; height:104px; }
+  }
 
   #loadingMsg{padding:20px;color:#888;font-size:15px;}
 
@@ -318,6 +324,7 @@
       <div class="tab-row">
         <button class="tab-btn active" id="tabVocabBtn">📚 Vocabulário</button>
         <button class="tab-btn" id="tabGoalsBtn">🎯 Metas terapêuticas</button>
+        <button class="tab-btn" id="tabVoiceBtn">🔊 Voz</button>
       </div>
 
       <div id="vocabTab">
@@ -352,6 +359,26 @@
         </div>
 
         <div id="goalsList" style="margin-top:18px;"></div>
+      </div>
+
+      <div id="voiceTab" style="display:none;">
+        <h2>Configurar voz</h2>
+        <p style="font-size:13px;color:var(--ink-soft);margin-top:-8px;">Escolha a voz que fica mais natural. Vozes marcadas com ⭐ costumam soar melhor.</p>
+
+        <label for="voiceSelect">Voz</label>
+        <select id="voiceSelect"></select>
+
+        <div class="row" style="margin-top:10px;">
+          <button class="btn-secondary" id="testVoiceBtn" style="flex:1;">▶️ Testar esta voz</button>
+        </div>
+
+        <label for="rateRange">Velocidade da fala: <span id="rateVal">0.95</span>x</label>
+        <input type="range" id="rateRange" min="0.5" max="1.3" step="0.05" value="0.95" style="width:100%;">
+
+        <label for="pitchRange">Tom da voz: <span id="pitchVal">1.0</span></label>
+        <input type="range" id="pitchRange" min="0.6" max="1.5" step="0.05" value="1" style="width:100%;">
+
+        <div id="voiceStatus" style="font-size:13px;color:var(--ink-soft);margin-top:10px;"></div>
       </div>
 
       <div class="row">
@@ -409,12 +436,14 @@
 
   const STORAGE_KEY = 'caa_vocab_v2';
   const GOALS_KEY = 'caa_goals_v1';
+  const VOICE_KEY = 'caa_voice_v1';
   const PIN = '1234'; // PIN de exemplo — trocar antes do uso real
 
   let vocab = [];
   let goals = [];
   let activeCat = 'nucleo';
   let sentence = [];
+  let voiceSettings = { voiceURI: null, rate: 0.95, pitch: 1.0 };
 
   const grid = document.getElementById('grid');
   const categoryBar = document.getElementById('categoryBar');
@@ -449,6 +478,19 @@
     catch(e){ console.error('Falha ao salvar vocabulário', e); }
   }
 
+  async function loadVoiceSettings(){
+    try{
+      const result = await window.storage.get(VOICE_KEY, false);
+      if(result && result.value) return JSON.parse(result.value);
+    }catch(e){ /* não existe ainda */ }
+    return null;
+  }
+
+  async function saveVoiceSettings(){
+    try{ await window.storage.set(VOICE_KEY, JSON.stringify(voiceSettings), false); }
+    catch(e){ console.error('Falha ao salvar preferências de voz', e); }
+  }
+
   async function loadGoals(){
     try{
       const result = await window.storage.get(GOALS_KEY, true);
@@ -477,6 +519,8 @@
 
     headerSub.textContent = vocab.length + ' símbolos';
     goals = await loadGoals();
+    const savedVoice = await loadVoiceSettings();
+    if(savedVoice) voiceSettings = { ...voiceSettings, ...savedVoice };
     renderFavRow();
     renderGrid();
   }
@@ -555,17 +599,49 @@
     });
   }
 
+  // Dá uma nota de qualidade a cada voz em pt para escolher a melhor por padrão.
+  // Vozes "neurais/online/natural" costumam soar muito mais naturais que as
+  // vozes robóticas locais que o sistema oferece por padrão.
+  function scoreVoice(v){
+    const name = (v.name || '').toLowerCase();
+    let score = 0;
+    if(v.lang && v.lang.toLowerCase() === 'pt-br') score += 5;
+    else if(v.lang && v.lang.toLowerCase().startsWith('pt')) score += 3;
+    if(!v.localService) score += 4; // vozes online/na nuvem tendem a ser mais naturais
+    if(/neural|natural|online|wavenet|premium/.test(name)) score += 6;
+    if(/google/.test(name)) score += 3;
+    if(/microsoft|francisca|fernanda|thalita|antonio|daniel/.test(name)) score += 2;
+    if(/compact|robot|espeak/.test(name)) score -= 5;
+    return score;
+  }
+
+  function getPtVoices(){
+    const voices = speechSynthesis.getVoices();
+    return voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('pt'));
+  }
+
+  function bestVoice(){
+    const ptVoices = getPtVoices();
+    if(ptVoices.length === 0) return null;
+    // Preferência salva pelo cuidador tem prioridade, se ainda existir no sistema
+    if(voiceSettings.voiceURI){
+      const chosen = ptVoices.find(v => v.voiceURI === voiceSettings.voiceURI);
+      if(chosen) return chosen;
+    }
+    return [...ptVoices].sort((a,b) => scoreVoice(b) - scoreVoice(a))[0];
+  }
+
   function speak(text, chipEl){
     if(!('speechSynthesis' in window)){
       headerSub.textContent = 'Este navegador não suporta fala.';
       return;
     }
     const utter = new SpeechSynthesisUtterance(text);
-    const voices = speechSynthesis.getVoices();
-    const ptVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('pt'));
-    if(ptVoice) utter.voice = ptVoice;
+    const voice = bestVoice();
+    if(voice) utter.voice = voice;
     utter.lang = 'pt-BR';
-    utter.rate = 0.95;
+    utter.rate = voiceSettings.rate || 0.95;
+    utter.pitch = voiceSettings.pitch || 1.0;
     utter.volume = 1;
     if(chipEl){
       chipEl.classList.add('speaking');
@@ -582,7 +658,10 @@
   // de forma assíncrona e a primeira chamada de speak() pode sair muda)
   if('speechSynthesis' in window){
     speechSynthesis.getVoices();
-    speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+    speechSynthesis.onvoiceschanged = () => {
+      speechSynthesis.getVoices();
+      if(document.getElementById('voiceSelect')) populateVoiceSelect();
+    };
   }
 
   document.getElementById('testSoundBtn').addEventListener('click', () => {
@@ -590,9 +669,9 @@
       headerSub.textContent = 'Fala não suportada neste navegador/app.';
       return;
     }
-    const voices = speechSynthesis.getVoices();
-    const ptVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('pt'));
-    headerSub.textContent = ptVoices.length + ' voz(es) em pt encontrada(s) de ' + voices.length + ' total';
+    const ptVoices = getPtVoices();
+    const chosen = bestVoice();
+    headerSub.textContent = ptVoices.length + ' voz(es) em pt · usando: ' + (chosen ? chosen.name : 'padrão do sistema');
     speak('Olá, teste de som funcionando');
   });
 
@@ -715,9 +794,20 @@
   document.getElementById('tabGoalsBtn').addEventListener('click', () => {
     document.getElementById('tabGoalsBtn').classList.add('active');
     document.getElementById('tabVocabBtn').classList.remove('active');
+    document.getElementById('tabVoiceBtn').classList.remove('active');
     document.getElementById('goalsTab').style.display = 'block';
     document.getElementById('vocabTab').style.display = 'none';
+    document.getElementById('voiceTab').style.display = 'none';
     renderGoalsList();
+  });
+  document.getElementById('tabVoiceBtn').addEventListener('click', () => {
+    document.getElementById('tabVoiceBtn').classList.add('active');
+    document.getElementById('tabVocabBtn').classList.remove('active');
+    document.getElementById('tabGoalsBtn').classList.remove('active');
+    document.getElementById('voiceTab').style.display = 'block';
+    document.getElementById('vocabTab').style.display = 'none';
+    document.getElementById('goalsTab').style.display = 'none';
+    populateVoiceSelect();
   });
 
   // ---------- Metas terapêuticas ----------
