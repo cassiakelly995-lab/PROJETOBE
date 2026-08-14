@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Minha Voz — Prancha CAA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#faf9f6;
+    --bg-deep:#f0eee8;
+    --ink:#242220;
+    --ink-soft:#6b6660;
+    --panel:#ffffff;
+    --border:#e4e1d9;
+    --focus:#1a56db;
+    --radius-lg:20px;
+    --radius-md:14px;
+    --shadow-soft:0 2px 10px rgba(40,35,25,0.06);
+    --shadow-lift:0 6px 20px rgba(40,35,25,0.12);
+
+    /* Fitzgerald Key - código de cores padrão em CAA (funcional, não decorativo) */
+    --c-nucleo:#7c4fd6;
+    --c-nucleo-soft:#efe7fb;
+    --c-pessoas:#c99400;
+    --c-pessoas-soft:#faf1d9;
+    --c-acoes:#2e8b46;
+    --c-acoes-soft:#e5f3e8;
+    --c-substantivos:#d16a15;
+    --c-substantivos-soft:#fbebdc;
+    --c-descritivos:#2f6fd1;
+    --c-descritivos-soft:#e5eefb;
+    --c-social:#c23e82;
+    --c-social-soft:#fae4f0;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    font-family:'Atkinson Hyperlegible', system-ui, sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+
+  /* ---------- CABEÇALHO ---------- */
+  #appHeader{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 16px 4px;
+    background:var(--bg);
+  }
+  #appHeader .logo{
+    width:34px;height:34px;border-radius:10px;
+    background:linear-gradient(135deg, var(--c-nucleo), var(--c-descritivos));
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-size:18px;flex-shrink:0;
+  }
+  #appHeader h1{font-size:17px;margin:0;font-weight:700;}
+  #appHeader .sub{font-size:12px;color:var(--ink-soft);margin-left:auto;white-space:nowrap;}
+
+  /* ---------- BARRA DE FRASE ---------- */
+  #sentenceBar{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 16px;
+    background:var(--panel);
+    margin:8px 12px 0;
+    border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-soft);
+    min-height:92px;
+  }
+  #sentenceStrip{
+    flex:1;
+    display:flex;
+    gap:8px;
+    overflow-x:auto;
+    min-height:72px;
+    align-items:center;
+    padding:4px;
+  }
+  .sentence-chip{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    min-width:70px;
+    height:70px;
+    background:#fff;
+    border:2px solid var(--border);
+    border-radius:var(--radius-md);
+    padding:4px;
+    flex-shrink:0;
+    transition:transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .sentence-chip.speaking{
+    box-shadow:0 0 0 3px var(--focus);
+    animation:pulse 0.9s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{transform:scale(1);}
+    50%{transform:scale(1.06);}
+  }
+  .sentence-chip img{width:38px;height:38px;object-fit:contain;}
+  .sentence-chip span{font-size:10px;text-align:center;line-height:1.1;margin-top:2px;}
+  .sentence-empty{color:#999;font-size:14px;padding-left:8px;}
+
+  .bar-btn{
+    border:none;
+    border-radius:var(--radius-md);
+    font-weight:700;
+    font-size:15px;
+    padding:0 18px;
+    height:70px;
+    cursor:pointer;
+    flex-shrink:0;
+    transition:transform 0.1s ease, filter 0.15s ease;
+    font-family:inherit;
+  }
+  .bar-btn:active{transform:scale(0.96);}
+  .bar-btn:focus-visible{outline:3px solid var(--focus); outline-offset:2px;}
+  #speakBtn{background:var(--c-acoes); color:#fff;}
+  #speakBtn:hover{filter:brightness(1.06);}
+  #clearBtn{background:var(--bg-deep); color:var(--ink-soft);}
+  #settingsBtn{background:transparent; color:#b9b4aa; font-size:20px; width:52px; padding:0;}
+
+  /* ---------- FAVORITOS ---------- */
+  #favRow{
+    display:flex; gap:8px; padding:10px 16px 0; overflow-x:auto;
+  }
+  #favRow .fav-chip{
+    flex-shrink:0; display:flex; align-items:center; gap:6px;
+    background:var(--panel); border:2px solid var(--border);
+    border-radius:999px; padding:6px 12px 6px 6px; cursor:pointer;
+    font-size:13px; font-weight:600;
+  }
+  #favRow .fav-chip img{width:26px;height:26px;object-fit:contain;}
+  #favRow .fav-chip .fallback-emoji{font-size:18px;}
+
+  /* ---------- CATEGORIAS ---------- */
+  #categoryBar{
+    display:flex;
+    gap:8px;
+    padding:12px 16px;
+    overflow-x:auto;
+  }
+  .cat-btn{
+    flex-shrink:0;
+    display:flex; align-items:center; gap:6px;
+    border:2px solid transparent;
+    border-radius:999px;
+    padding:9px 16px;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+    font-family:inherit;
+    transition:transform 0.1s ease;
+  }
+  .cat-btn:active{transform:scale(0.97);}
+  .cat-btn:focus-visible{outline:3px solid var(--focus); outline-offset:2px;}
+
+  /* ---------- GRADE DE SÍMBOLOS ---------- */
+  #grid{
+    flex:1;
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(118px, 1fr));
+    gap:12px;
+    padding:6px 16px 20px;
+    overflow-y:auto;
+    align-content:start;
+  }
+  .symbol-btn{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-end;
+    background:#fff;
+    border:2px solid var(--border);
+    border-top-width:6px;
+    border-radius:var(--radius-md);
+    min-height:126px;
+    padding:6px 4px 8px;
+    cursor:pointer;
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
+    box-shadow:var(--shadow-soft);
+    transition:transform 0.12s ease, box-shadow 0.12s ease;
+    font-family:inherit;
+  }
+  .symbol-btn:active{transform:scale(0.94); box-shadow:var(--shadow-lift);}
+  .symbol-btn:focus-visible{outline:3px solid var(--focus); outline-offset:2px;}
+  .symbol-btn.speaking{
+    box-shadow:0 0 0 4px var(--focus), var(--shadow-lift);
+    animation:pop 0.35s ease;
+  }
+  @keyframes pop{
+    0%{transform:scale(1);}
+    40%{transform:scale(1.08);}
+    100%{transform:scale(1);}
+  }
+  .symbol-btn img{width:60px;height:60px;object-fit:contain;margin-bottom:6px;}
+  .symbol-btn .fallback-emoji{font-size:38px;margin-bottom:6px;}
+  .symbol-btn span{font-size:14px;font-weight:700;text-align:center;line-height:1.15;}
+
+  #loadingMsg{padding:20px;color:#888;font-size:15px;}
+
+  /* ---------- MODO CUIDADOR ---------- */
+  #caregiverOverlay{
+    position:fixed; inset:0; background:rgba(30,26,20,0.5);
+    display:none; align-items:center; justify-content:center; z-index:50;
+  }
+  #caregiverPanel{
+    background:#fff; border-radius:var(--radius-lg); padding:24px;
+    width:min(480px, 92vw); max-height:86vh; overflow-y:auto;
+    font-family:inherit;
+  }
+  #caregiverPanel h2{margin-top:0; font-size:20px;}
+  #caregiverPanel label{display:block; font-size:13px; font-weight:700; margin:14px 0 4px;}
+  #caregiverPanel input, #caregiverPanel select{
+    width:100%; padding:10px; border:1px solid var(--border); border-radius:10px; font-size:15px;
+    font-family:inherit;
+  }
+  #caregiverPanel .row{display:flex; gap:8px; margin-top:18px;}
+  #caregiverPanel button{
+    padding:12px 16px; border:none; border-radius:10px; font-weight:700; cursor:pointer; font-size:14px;
+    font-family:inherit;
+  }
+  .btn-primary{background:var(--c-acoes); color:#fff; flex:1;}
+  .btn-secondary{background:var(--bg-deep); color:var(--ink);}
+  .btn-danger{background:#c0392b; color:#fff;}
+  #vocabList{margin-top:16px; border-top:1px solid var(--border); padding-top:10px;}
+  .vocab-item{display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f0f0f0; font-size:14px;}
+  #pinScreen{display:flex; flex-direction:column; gap:10px; align-items:center;}
+  #pinScreen input{text-align:center; font-size:24px; letter-spacing:8px;}
+  #pinError{color:#c0392b; font-size:13px; min-height:16px;}
+  .toggle-row{display:flex; align-items:center; justify-content:space-between; margin-top:14px;}
+  .toggle-row span{font-size:14px; font-weight:600;}
+
+  /* ---------- ABAS DO PAINEL ---------- */
+  .tab-row{display:flex; gap:6px; margin-bottom:6px;}
+  .tab-btn{
+    flex:1; background:var(--bg-deep); color:var(--ink-soft);
+    padding:10px; border-radius:10px; font-size:13px; font-weight:700; border:none; cursor:pointer;
+    font-family:inherit;
+  }
+  .tab-btn.active{background:var(--c-nucleo); color:#fff;}
+
+  /* ---------- METAS TERAPÊUTICAS ---------- */
+  .goal-card{
+    border:1px solid var(--border); border-radius:var(--radius-md);
+    padding:12px; margin-bottom:12px; background:var(--bg);
+  }
+  .goal-card h3{margin:0 0 4px; font-size:15px;}
+  .goal-card .goal-meta{font-size:12px; color:var(--ink-soft); margin-bottom:10px;}
+  .prompt-row{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;}
+  .prompt-btn{
+    flex:1; min-width:72px; border:none; border-radius:8px; padding:8px 4px;
+    font-size:11px; font-weight:700; cursor:pointer; color:#fff; font-family:inherit;
+  }
+  .prompt-independente{background:#2e8b46;}
+  .prompt-gestual{background:#2f6fd1;}
+  .prompt-verbal{background:#c99400;}
+  .prompt-fisica{background:#d16a15;}
+  .prompt-sem_resposta{background:#c0392b;}
+  .goal-progress-bar{
+    height:10px; background:#eee; border-radius:6px; overflow:hidden; margin-top:4px;
+  }
+  .goal-progress-fill{height:100%; background:#2e8b46;}
+  .goal-progress-label{font-size:12px; color:var(--ink-soft); margin-top:4px;}
+  .goal-delete{background:none; border:none; color:#c0392b; font-size:12px; cursor:pointer; float:right;}
+</style>
+</head>
+<body>
+
+<div id="appHeader">
+  <div class="logo">💬</div>
+  <h1>Minha Voz</h1>
+  <div class="sub" id="headerSub"></div>
+  <button id="testSoundBtn" style="border:none;background:var(--bg-deep);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🔊 Testar som</button>
+</div>
+
+<div id="sentenceBar">
+  <div id="sentenceStrip"><span class="sentence-empty">Toque nos símbolos para formar uma frase</span></div>
+  <button class="bar-btn" id="speakBtn" title="Falar frase">🔊 Falar</button>
+  <button class="bar-btn" id="clearBtn" title="Limpar frase">🗑️</button>
+  <button class="bar-btn" id="settingsBtn" title="Modo cuidador">⚙️</button>
+</div>
+
+<div id="favRow"></div>
+<div id="categoryBar"></div>
+<div id="grid"><div id="loadingMsg">Carregando símbolos…</div></div>
+
+<!-- ---------- MODO CUIDADOR ---------- -->
+<div id="caregiverOverlay">
+  <div id="caregiverPanel">
+    <div id="pinScreen">
+      <h2>Modo cuidador</h2>
+      <p style="font-size:14px;color:var(--ink-soft);margin:0;">Digite o PIN para configurar o vocabulário.</p>
+      <input type="password" id="pinInput" inputmode="numeric" maxlength="4" placeholder="••••">
+      <div id="pinError"></div>
+      <div class="row" style="width:100%;">
+        <button class="btn-secondary" id="pinCancel" style="flex:1;">Cancelar</button>
+        <button class="btn-primary" id="pinConfirm">Entrar</button>
+      </div>
+    </div>
+
+    <div id="editScreen" style="display:none;">
+      <div class="tab-row">
+        <button class="tab-btn active" id="tabVocabBtn">📚 Vocabulário</button>
+        <button class="tab-btn" id="tabGoalsBtn">🎯 Metas terapêuticas</button>
+      </div>
+
+      <div id="vocabTab">
+      <h2>Adicionar símbolo</h2>
+      <label for="newWord">Palavra</label>
+      <input type="text" id="newWord" placeholder="ex: água, parque, cansado">
+      <label for="newCat">Categoria</label>
+      <select id="newCat"></select>
+      <div class="row">
+        <button class="btn-primary" id="addWordBtn">Buscar e adicionar</button>
+      </div>
+      <div id="addStatus" style="font-size:13px; color:var(--ink-soft); margin-top:8px;"></div>
+
+      <div class="toggle-row">
+        <span>Zerar contagem de favoritos</span>
+        <button class="btn-secondary" id="resetFavBtn" style="padding:8px 12px;font-size:13px;">Zerar</button>
+      </div>
+
+      <div id="vocabList"></div>
+      </div>
+
+      <div id="goalsTab" style="display:none;">
+        <h2>Metas terapêuticas</h2>
+        <p style="font-size:13px;color:var(--ink-soft);margin-top:-8px;">Cadastre metas e registre cada tentativa com o nível de apoio necessário (padrão ABA/DTT).</p>
+
+        <label for="goalTitle">Título da meta</label>
+        <input type="text" id="goalTitle" placeholder="ex: usar verbos de ação espontaneamente">
+        <label for="goalCat">Categoria relacionada (opcional)</label>
+        <select id="goalCat"><option value="">— nenhuma —</option></select>
+        <div class="row">
+          <button class="btn-primary" id="addGoalBtn">Criar meta</button>
+        </div>
+
+        <div id="goalsList" style="margin-top:18px;"></div>
+      </div>
+
+      <div class="row">
+        <button class="btn-secondary" id="closeCaregiver" style="flex:1;">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+
+  const CATEGORIES = [
+    { id:'nucleo',       label:'Núcleo',       icon:'⭐', color:'var(--c-nucleo)',       soft:'var(--c-nucleo-soft)' },
+    { id:'pessoas',      label:'Pessoas',      icon:'🧑',  color:'var(--c-pessoas)',      soft:'var(--c-pessoas-soft)' },
+    { id:'acoes',        label:'Ações',        icon:'🏃', color:'var(--c-acoes)',        soft:'var(--c-acoes-soft)' },
+    { id:'substantivos', label:'Coisas',       icon:'📦', color:'var(--c-substantivos)', soft:'var(--c-substantivos-soft)' },
+    { id:'descritivos',  label:'Sentimentos',  icon:'💭', color:'var(--c-descritivos)',  soft:'var(--c-descritivos-soft)' },
+    { id:'social',       label:'Social',       icon:'👋', color:'var(--c-social)',       soft:'var(--c-social-soft)' },
+  ];
+
+  const DEFAULT_VOCAB = [
+    { word:'sim', cat:'nucleo' }, { word:'não', cat:'nucleo' },
+    { word:'quero', cat:'nucleo' }, { word:'ajuda', cat:'nucleo' },
+    { word:'mais', cat:'nucleo' }, { word:'terminar', cat:'nucleo' },
+    { word:'banheiro', cat:'nucleo' }, { word:'parar', cat:'nucleo' },
+
+    { word:'eu', cat:'pessoas' }, { word:'você', cat:'pessoas' },
+    { word:'mamãe', cat:'pessoas' }, { word:'papai', cat:'pessoas' },
+
+    { word:'comer', cat:'acoes' }, { word:'beber', cat:'acoes' },
+    { word:'brincar', cat:'acoes' }, { word:'dormir', cat:'acoes' },
+    { word:'ir', cat:'acoes' }, { word:'sentar', cat:'acoes' },
+
+    { word:'água', cat:'substantivos' }, { word:'comida', cat:'substantivos' },
+    { word:'casa', cat:'substantivos' }, { word:'escola', cat:'substantivos' },
+    { word:'carro', cat:'substantivos' }, { word:'brinquedo', cat:'substantivos' },
+
+    { word:'feliz', cat:'descritivos' }, { word:'triste', cat:'descritivos' },
+    { word:'cansado', cat:'descritivos' }, { word:'com dor', cat:'descritivos' },
+    { word:'com medo', cat:'descritivos' },
+
+    { word:'oi', cat:'social' }, { word:'tchau', cat:'social' },
+    { word:'por favor', cat:'social' }, { word:'obrigado', cat:'social' },
+  ];
+
+  const FALLBACK_EMOJI = {
+    'sim':'✅','não':'❌','quero':'🙋','ajuda':'🆘','mais':'➕','terminar':'🏁',
+    'banheiro':'🚻','parar':'✋','eu':'🧍','você':'👉','mamãe':'👩','papai':'👨',
+    'comer':'🍽️','beber':'🥤','brincar':'🧸','dormir':'😴','ir':'🚶','sentar':'🪑',
+    'água':'💧','comida':'🍎','casa':'🏠','escola':'🏫','carro':'🚗','brinquedo':'🧩',
+    'feliz':'😄','triste':'😢','cansado':'🥱','com dor':'🤕','com medo':'😨',
+    'oi':'👋','tchau':'🙌','por favor':'🙏','obrigado':'🙏'
+  };
+
+  const STORAGE_KEY = 'caa_vocab_v2';
+  const GOALS_KEY = 'caa_goals_v1';
+  const PIN = '1234'; // PIN de exemplo — trocar antes do uso real
+
+  let vocab = [];
+  let goals = [];
+  let activeCat = 'nucleo';
+  let sentence = [];
+
+  const grid = document.getElementById('grid');
+  const categoryBar = document.getElementById('categoryBar');
+  const sentenceStrip = document.getElementById('sentenceStrip');
+  const favRow = document.getElementById('favRow');
+  const headerSub = document.getElementById('headerSub');
+
+  async function fetchPictoId(word){
+    try{
+      const res = await fetch('https://api.arasaac.org/api/pictograms/pt/bestsearch/' + encodeURIComponent(word));
+      if(!res.ok) return null;
+      const data = await res.json();
+      if(Array.isArray(data) && data.length > 0) return data[0]._id;
+      return null;
+    }catch(e){ return null; }
+  }
+
+  function pictoUrl(id){
+    return `https://static.arasaac.org/pictograms/${id}/${id}_300.png`;
+  }
+
+  async function loadVocab(){
+    try{
+      const result = await window.storage.get(STORAGE_KEY, true);
+      if(result && result.value) return JSON.parse(result.value);
+    }catch(e){ /* não existe ainda */ }
+    return null;
+  }
+
+  async function saveVocab(){
+    try{ await window.storage.set(STORAGE_KEY, JSON.stringify(vocab), true); }
+    catch(e){ console.error('Falha ao salvar vocabulário', e); }
+  }
+
+  async function loadGoals(){
+    try{
+      const result = await window.storage.get(GOALS_KEY, true);
+      if(result && result.value) return JSON.parse(result.value);
+    }catch(e){ /* não existe ainda */ }
+    return [];
+  }
+
+  async function saveGoals(){
+    try{ await window.storage.set(GOALS_KEY, JSON.stringify(goals), true); }
+    catch(e){ console.error('Falha ao salvar metas', e); }
+  }
+
+  async function init(){
+    renderCategoryBar();
+    populateCategorySelect();
+
+    let saved = await loadVocab();
+    if(saved && saved.length){
+      vocab = saved.map(v => ({ count:0, ...v }));
+    }else{
+      vocab = DEFAULT_VOCAB.map(v => ({...v, imgId:null, count:0}));
+      await Promise.all(vocab.map(async item => { item.imgId = await fetchPictoId(item.word); }));
+      await saveVocab();
+    }
+
+    headerSub.textContent = vocab.length + ' símbolos';
+    goals = await loadGoals();
+    renderFavRow();
+    renderGrid();
+  }
+
+  function catInfo(catId){ return CATEGORIES.find(c => c.id === catId) || CATEGORIES[0]; }
+
+  function renderCategoryBar(){
+    categoryBar.innerHTML = '';
+    CATEGORIES.forEach(cat => {
+      const btn = document.createElement('button');
+      const isActive = cat.id === activeCat;
+      btn.className = 'cat-btn';
+      btn.style.background = isActive ? cat.color : cat.soft;
+      btn.style.color = isActive ? '#fff' : cat.color;
+      btn.innerHTML = `<span>${cat.icon}</span><span>${cat.label}</span>`;
+      btn.addEventListener('click', () => {
+        activeCat = cat.id;
+        renderCategoryBar();
+        renderGrid();
+      });
+      categoryBar.appendChild(btn);
+    });
+  }
+
+  function renderFavRow(){
+    const favs = [...vocab].filter(v => v.count > 0).sort((a,b) => b.count - a.count).slice(0,8);
+    favRow.innerHTML = '';
+    if(favs.length === 0){ favRow.style.display = 'none'; return; }
+    favRow.style.display = 'flex';
+    favs.forEach(item => {
+      const chip = document.createElement('button');
+      chip.className = 'fav-chip';
+      chip.style.color = catInfo(item.cat).color;
+      if(item.imgId){
+        const img = document.createElement('img'); img.src = pictoUrl(item.imgId); chip.appendChild(img);
+      }else{
+        const e = document.createElement('span'); e.className='fallback-emoji'; e.textContent = FALLBACK_EMOJI[item.word]||'❔'; chip.appendChild(e);
+      }
+      const span = document.createElement('span'); span.textContent = item.word; chip.appendChild(span);
+      chip.addEventListener('click', () => selectSymbol(item, chip));
+      favRow.appendChild(chip);
+    });
+  }
+
+  function renderGrid(){
+    grid.innerHTML = '';
+    const items = vocab.filter(v => v.cat === activeCat);
+    if(items.length === 0){
+      grid.innerHTML = '<div id="loadingMsg">Nenhum símbolo nesta categoria ainda.</div>';
+      return;
+    }
+    const info = catInfo(activeCat);
+    items.forEach(item => {
+      const btn = document.createElement('button');
+      btn.className = 'symbol-btn';
+      btn.style.borderTopColor = info.color;
+      btn.setAttribute('aria-label', item.word);
+
+      if(item.imgId){
+        const img = document.createElement('img');
+        img.src = pictoUrl(item.imgId); img.alt = item.word; img.loading = 'lazy';
+        btn.appendChild(img);
+      }else{
+        const emoji = document.createElement('div');
+        emoji.className = 'fallback-emoji';
+        emoji.textContent = FALLBACK_EMOJI[item.word] || '❔';
+        btn.appendChild(emoji);
+      }
+
+      const label = document.createElement('span');
+      label.textContent = item.word;
+      btn.appendChild(label);
+
+      btn.addEventListener('click', () => selectSymbol(item, btn));
+      grid.appendChild(btn);
+    });
+  }
+
+  function speak(text, chipEl){
+    if(!('speechSynthesis' in window)){
+      headerSub.textContent = 'Este navegador não suporta fala.';
+      return;
+    }
+    const utter = new SpeechSynthesisUtterance(text);
+    const voices = speechSynthesis.getVoices();
+    const ptVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('pt'));
+    if(ptVoice) utter.voice = ptVoice;
+    utter.lang = 'pt-BR';
+    utter.rate = 0.95;
+    utter.volume = 1;
+    if(chipEl){
+      chipEl.classList.add('speaking');
+      utter.onend = () => chipEl.classList.remove('speaking');
+    }
+    utter.onerror = (e) => {
+      headerSub.textContent = 'Erro ao falar: ' + (e.error || 'desconhecido');
+    };
+    speechSynthesis.cancel();
+    speechSynthesis.speak(utter);
+  }
+
+  // Aquece a lista de vozes assim que possível (em vários navegadores ela carrega
+  // de forma assíncrona e a primeira chamada de speak() pode sair muda)
+  if('speechSynthesis' in window){
+    speechSynthesis.getVoices();
+    speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+  }
+
+  document.getElementById('testSoundBtn').addEventListener('click', () => {
+    if(!('speechSynthesis' in window)){
+      headerSub.textContent = 'Fala não suportada neste navegador/app.';
+      return;
+    }
+    const voices = speechSynthesis.getVoices();
+    const ptVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('pt'));
+    headerSub.textContent = ptVoices.length + ' voz(es) em pt encontrada(s) de ' + voices.length + ' total';
+    speak('Olá, teste de som funcionando');
+  });
+
+  async function selectSymbol(item, sourceEl){
+    if(sourceEl){
+      sourceEl.classList.add('speaking');
+      setTimeout(() => sourceEl.classList.remove('speaking'), 500);
+    }
+    speak(item.word);
+    item.count = (item.count || 0) + 1;
+    sentence.push(item);
+    renderSentence();
+    renderFavRow();
+    await saveVocab();
+  }
+
+  function selectSymbolReplay(item, chipEl){
+    speak(item.word, chipEl);
+  }
+
+  function renderSentence(){
+    sentenceStrip.innerHTML = '';
+    if(sentence.length === 0){
+      sentenceStrip.innerHTML = '<span class="sentence-empty">Toque nos símbolos para formar uma frase</span>';
+      return;
+    }
+    sentence.forEach(item => {
+      const chip = document.createElement('div');
+      chip.className = 'sentence-chip';
+      chip.style.borderColor = catInfo(item.cat).color;
+      if(item.imgId){
+        const img = document.createElement('img'); img.src = pictoUrl(item.imgId); chip.appendChild(img);
+      }else{
+        const e = document.createElement('div'); e.style.fontSize='26px'; e.textContent = FALLBACK_EMOJI[item.word]||'❔'; chip.appendChild(e);
+      }
+      const span = document.createElement('span'); span.textContent = item.word; chip.appendChild(span);
+      chip.style.cursor = 'pointer';
+      chip.addEventListener('click', () => selectSymbolReplay(item, chip));
+      sentenceStrip.appendChild(chip);
+    });
+  }
+
+  document.getElementById('speakBtn').addEventListener('click', () => {
+    if(sentence.length === 0) return;
+    speak(sentence.map(s => s.word).join(' '));
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    sentence = [];
+    renderSentence();
+  });
+
+  // ---------- Modo cuidador ----------
+  const overlay = document.getElementById('caregiverOverlay');
+  const pinScreen = document.getElementById('pinScreen');
+  const editScreen = document.getElementById('editScreen');
+  const pinInput = document.getElementById('pinInput');
+  const pinError = document.getElementById('pinError');
+
+  document.getElementById('settingsBtn').addEventListener('click', () => {
+    overlay.style.display = 'flex';
+    pinScreen.style.display = 'flex';
+    editScreen.style.display = 'none';
+    pinInput.value = ''; pinError.textContent = '';
+    pinInput.focus();
+  });
+
+  document.getElementById('pinCancel').addEventListener('click', () => { overlay.style.display = 'none'; });
+  document.getElementById('pinConfirm').addEventListener('click', tryPin);
+  pinInput.addEventListener('keydown', e => { if(e.key === 'Enter') tryPin(); });
+
+  function tryPin(){
+    if(pinInput.value === PIN){
+      pinScreen.style.display = 'none';
+      editScreen.style.display = 'block';
+      document.getElementById('tabVocabBtn').click();
+      renderVocabList();
+    }else{
+      pinError.textContent = 'PIN incorreto.';
+    }
+  }
+
+  document.getElementById('closeCaregiver').addEventListener('click', () => {
+    overlay.style.display = 'none';
+    renderCategoryBar();
+    renderGrid();
+    renderFavRow();
+    headerSub.textContent = vocab.length + ' símbolos';
+  });
+
+  document.getElementById('resetFavBtn').addEventListener('click', async () => {
+    vocab.forEach(v => v.count = 0);
+    await saveVocab();
+    renderVocabList();
+  });
+
+  function populateCategorySelect(){
+    const sel = document.getElementById('newCat');
+    sel.innerHTML = '';
+    CATEGORIES.forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat.id; opt.textContent = cat.label;
+      sel.appendChild(opt);
+    });
+    const goalSel = document.getElementById('goalCat');
+    CATEGORIES.forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat.id; opt.textContent = cat.label;
+      goalSel.appendChild(opt);
+    });
+  }
+
+  // ---------- Abas do painel ----------
+  document.getElementById('tabVocabBtn').addEventListener('click', () => {
+    document.getElementById('tabVocabBtn').classList.add('active');
+    document.getElementById('tabGoalsBtn').classList.remove('active');
+    document.getElementById('vocabTab').style.display = 'block';
+    document.getElementById('goalsTab').style.display = 'none';
+  });
+  document.getElementById('tabGoalsBtn').addEventListener('click', () => {
+    document.getElementById('tabGoalsBtn').classList.add('active');
+    document.getElementById('tabVocabBtn').classList.remove('active');
+    document.getElementById('goalsTab').style.display = 'block';
+    document.getElementById('vocabTab').style.display = 'none';
+    renderGoalsList();
+  });
+
+  // ---------- Metas terapêuticas ----------
+  document.getElementById('addGoalBtn').addEventListener('click', async () => {
+    const title = document.getElementById('goalTitle').value.trim();
+    const cat = document.getElementById('goalCat').value;
+    if(!title) return;
+    goals.push({ id: Date.now().toString(), title, cat, trials: [] });
+    document.getElementById('goalTitle').value = '';
+    await saveGoals();
+    renderGoalsList();
+  });
+
+  const PROMPT_LEVELS = [
+    { id:'independente', label:'Independente' },
+    { id:'gestual',      label:'Dica gestual' },
+    { id:'verbal',       label:'Dica verbal' },
+    { id:'fisica',       label:'Dica física' },
+    { id:'sem_resposta', label:'Sem resposta' },
+  ];
+
+  function renderGoalsList(){
+    const list = document.getElementById('goalsList');
+    list.innerHTML = '';
+    if(goals.length === 0){
+      list.innerHTML = '<p style="font-size:13px;color:var(--ink-soft);">Nenhuma meta cadastrada ainda.</p>';
+      return;
+    }
+    goals.forEach(goal => {
+      const card = document.createElement('div');
+      card.className = 'goal-card';
+
+      const catLabel = goal.cat ? catInfo(goal.cat).label : 'geral';
+      const trials = goal.trials || [];
+      const last = trials.slice(-20);
+      const indepCount = last.filter(t => t.level === 'independente').length;
+      const pct = last.length ? Math.round((indepCount / last.length) * 100) : 0;
+
+      card.innerHTML = `
+        <button class="goal-delete" data-goal="${goal.id}">Excluir</button>
+        <h3>${goal.title}</h3>
+        <div class="goal-meta">Categoria: ${catLabel} · ${trials.length} tentativa(s) registrada(s)</div>
+      `;
+
+      const promptRow = document.createElement('div');
+      promptRow.className = 'prompt-row';
+      PROMPT_LEVELS.forEach(level => {
+        const btn = document.createElement('button');
+        btn.className = 'prompt-btn prompt-' + level.id;
+        btn.textContent = level.label;
+        btn.addEventListener('click', async () => {
+          goal.trials = goal.trials || [];
+          goal.trials.push({ date: new Date().toISOString(), level: level.id });
+          await saveGoals();
+          renderGoalsList();
+        });
+        promptRow.appendChild(btn);
+      });
+      card.appendChild(promptRow);
+
+      const progWrap = document.createElement('div');
+      progWrap.innerHTML = `
+        <div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${pct}%;"></div></div>
+        <div class="goal-progress-label">${pct}% independente (últimas ${last.length} tentativas)</div>
+      `;
+      card.appendChild(progWrap);
+
+      list.appendChild(card);
+    });
+
+    list.querySelectorAll('.goal-delete').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-goal');
+        goals = goals.filter(g => g.id !== id);
+        await saveGoals();
+        renderGoalsList();
+      });
+    });
+  }
+
+  document.getElementById('addWordBtn').addEventListener('click', async () => {
+    const word = document.getElementById('newWord').value.trim().toLowerCase();
+    const cat = document.getElementById('newCat').value;
+    const status = document.getElementById('addStatus');
+    if(!word){ status.textContent = 'Digite uma palavra.'; return; }
+
+    status.textContent = 'Buscando símbolo…';
+    const imgId = await fetchPictoId(word);
+    vocab.push({ word, cat, imgId, count:0 });
+    await saveVocab();
+    document.getElementById('newWord').value = '';
+    status.textContent = imgId ? `"${word}" adicionado com símbolo.` : `"${word}" adicionado sem símbolo (usará ícone genérico).`;
+    renderVocabList();
+  });
+
+  function renderVocabList(){
+    const list = document.getElementById('vocabList');
+    list.innerHTML = '<div style="font-weight:700;font-size:13px;margin-bottom:6px;">Vocabulário atual (' + vocab.length + ')</div>';
+    vocab.forEach((item, idx) => {
+      const row = document.createElement('div');
+      row.className = 'vocab-item';
+      const catLabel = catInfo(item.cat).label;
+      row.innerHTML = `<span>${item.word} <small style="color:var(--ink-soft);">(${catLabel} · usado ${item.count||0}x)</small></span>`;
+      const delBtn = document.createElement('button');
+      delBtn.textContent = 'Remover';
+      delBtn.className = 'btn-danger';
+      delBtn.style.padding = '4px 10px'; delBtn.style.fontSize = '12px';
+      delBtn.addEventListener('click', async () => {
+        vocab.splice(idx, 1);
+        await saveVocab();
+        renderVocabList();
+      });
+      row.appendChild(delBtn);
+      list.appendChild(row);
+    });
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
