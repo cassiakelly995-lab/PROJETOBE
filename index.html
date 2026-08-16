@@ -389,6 +389,39 @@
   </div>
 </div>
 
+<script type="module">
+  // ---------- Firebase (projeto: cassia-assistencia-v8) ----------
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getFirestore, collection, doc, getDocs, setDoc, deleteDoc
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCBxYwyTieXWmzC_yGq0Abyr5xXZoj-4ts",
+    authDomain: "cassia-assistencia-v8.firebaseapp.com",
+    projectId: "cassia-assistencia-v8",
+    storageBucket: "cassia-assistencia-v8.firebasestorage.app",
+    messagingSenderId: "1082407112672",
+    appId: "1:1082407112672:web:ea69563be63a9bd8036585",
+    measurementId: "G-S5DD7XX9HX"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // Coleções exclusivas deste app, separadas do resto do projeto da assistência
+  const VOCAB_COLLECTION = 'minha_voz_vocabulario';
+  const GOALS_COLLECTION = 'minha_voz_metas';
+
+  // Expõe pro script principal (não-module) usar
+  window.__firebase = {
+    db, collection, doc, getDocs, setDoc, deleteDoc,
+    VOCAB_COLLECTION, GOALS_COLLECTION
+  };
+  window.__firebaseReady = true;
+  window.dispatchEvent(new Event('firebase-ready'));
+</script>
+
 <script>
 (function(){
 
@@ -466,17 +499,49 @@
     return `https://static.arasaac.org/pictograms/${id}/${id}_300.png`;
   }
 
-  async function loadVocab(){
-    try{
-      const result = await window.storage.get(STORAGE_KEY, true);
-      if(result && result.value) return JSON.parse(result.value);
-    }catch(e){ /* não existe ainda */ }
+  // Foto real do usuário tem prioridade sobre o pictograma genérico
+  function symbolImageSrc(item){
+    if(item.photo) return item.photo;
+    if(item.imgId) return pictoUrl(item.imgId);
     return null;
   }
 
+  // Espera o módulo do Firebase terminar de carregar (é assíncrono)
+  function waitForFirebase(){
+    return new Promise(resolve => {
+      if(window.__firebaseReady) return resolve(window.__firebase);
+      window.addEventListener('firebase-ready', () => resolve(window.__firebase), { once:true });
+    });
+  }
+
+  async function loadVocab(){
+    try{
+      const fb = await waitForFirebase();
+      const snap = await fb.getDocs(fb.collection(fb.db, fb.VOCAB_COLLECTION));
+      if(snap.empty) return null;
+      const items = [];
+      snap.forEach(d => items.push(d.data()));
+      return items;
+    }catch(e){
+      console.error('Falha ao carregar vocabulário do Firestore', e);
+      return null;
+    }
+  }
+
   async function saveVocab(){
-    try{ await window.storage.set(STORAGE_KEY, JSON.stringify(vocab), true); }
-    catch(e){ console.error('Falha ao salvar vocabulário', e); }
+    try{
+      const fb = await waitForFirebase();
+      await Promise.all(vocab.map(item => {
+        const id = slugify(item.word);
+        return fb.setDoc(fb.doc(fb.db, fb.VOCAB_COLLECTION, id), item);
+      }));
+    }catch(e){ console.error('Falha ao salvar vocabulário no Firestore', e); }
+  }
+
+  function slugify(word){
+    return word.toString().toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'palavra';
   }
 
   async function loadVoiceSettings(){
@@ -494,15 +559,22 @@
 
   async function loadGoals(){
     try{
-      const result = await window.storage.get(GOALS_KEY, true);
-      if(result && result.value) return JSON.parse(result.value);
-    }catch(e){ /* não existe ainda */ }
-    return [];
+      const fb = await waitForFirebase();
+      const snap = await fb.getDocs(fb.collection(fb.db, fb.GOALS_COLLECTION));
+      const items = [];
+      snap.forEach(d => items.push(d.data()));
+      return items;
+    }catch(e){
+      console.error('Falha ao carregar metas do Firestore', e);
+      return [];
+    }
   }
 
   async function saveGoals(){
-    try{ await window.storage.set(GOALS_KEY, JSON.stringify(goals), true); }
-    catch(e){ console.error('Falha ao salvar metas', e); }
+    try{
+      const fb = await waitForFirebase();
+      await Promise.all(goals.map(goal => fb.setDoc(fb.doc(fb.db, fb.GOALS_COLLECTION, goal.id), goal)));
+    }catch(e){ console.error('Falha ao salvar metas no Firestore', e); }
   }
 
   async function init(){
@@ -555,8 +627,9 @@
       const chip = document.createElement('button');
       chip.className = 'fav-chip';
       chip.style.color = catInfo(item.cat).color;
-      if(item.imgId){
-        const img = document.createElement('img'); img.src = pictoUrl(item.imgId); chip.appendChild(img);
+      const favSrc = symbolImageSrc(item);
+      if(favSrc){
+        const img = document.createElement('img'); img.src = favSrc; chip.appendChild(img);
       }else{
         const e = document.createElement('span'); e.className='fallback-emoji'; e.textContent = FALLBACK_EMOJI[item.word]||'❔'; chip.appendChild(e);
       }
@@ -580,9 +653,10 @@
       btn.style.borderTopColor = info.color;
       btn.setAttribute('aria-label', item.word);
 
-      if(item.imgId){
+      const gridSrc = symbolImageSrc(item);
+      if(gridSrc){
         const img = document.createElement('img');
-        img.src = pictoUrl(item.imgId); img.alt = item.word; img.loading = 'lazy';
+        img.src = gridSrc; img.alt = item.word; img.loading = 'lazy';
         btn.appendChild(img);
       }else{
         const emoji = document.createElement('div');
@@ -698,8 +772,9 @@
       const chip = document.createElement('div');
       chip.className = 'sentence-chip';
       chip.style.borderColor = catInfo(item.cat).color;
-      if(item.imgId){
-        const img = document.createElement('img'); img.src = pictoUrl(item.imgId); chip.appendChild(img);
+      const sentSrc = symbolImageSrc(item);
+      if(sentSrc){
+        const img = document.createElement('img'); img.src = sentSrc; chip.appendChild(img);
       }else{
         const e = document.createElement('div'); e.style.fontSize='26px'; e.textContent = FALLBACK_EMOJI[item.word]||'❔'; chip.appendChild(e);
       }
@@ -926,8 +1001,11 @@
     list.querySelectorAll('.goal-delete').forEach(btn => {
       btn.addEventListener('click', async () => {
         const id = btn.getAttribute('data-goal');
+        try{
+          const fb = await waitForFirebase();
+          await fb.deleteDoc(fb.doc(fb.db, fb.GOALS_COLLECTION, id));
+        }catch(e){ console.error('Falha ao excluir meta no Firestore', e); }
         goals = goals.filter(g => g.id !== id);
-        await saveGoals();
         renderGoalsList();
       });
     });
@@ -948,21 +1026,108 @@
     renderVocabList();
   });
 
+  // Comprime a foto antes de guardar, pra não pesar no banco de dados
+  function compressImage(file, maxSize, quality){
+    maxSize = maxSize || 480; quality = quality || 0.65;
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let w = img.width, h = img.height;
+          if(w > h){ if(w > maxSize){ h = Math.round(h * maxSize / w); w = maxSize; } }
+          else{ if(h > maxSize){ w = Math.round(w * maxSize / h); h = maxSize; } }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
   function renderVocabList(){
     const list = document.getElementById('vocabList');
     list.innerHTML = '<div style="font-weight:700;font-size:13px;margin-bottom:6px;">Vocabulário atual (' + vocab.length + ')</div>';
     vocab.forEach((item, idx) => {
       const row = document.createElement('div');
       row.className = 'vocab-item';
+      row.style.flexWrap = 'wrap';
       const catLabel = catInfo(item.cat).label;
-      row.innerHTML = `<span>${item.word} <small style="color:var(--ink-soft);">(${catLabel} · usado ${item.count||0}x)</small></span>`;
+
+      const thumb = document.createElement('span');
+      thumb.style.cssText = 'width:32px;height:32px;border-radius:8px;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;background:var(--bg-deep);margin-right:6px;flex-shrink:0;';
+      if(item.photo){
+        thumb.innerHTML = `<img src="${item.photo}" style="width:100%;height:100%;object-fit:cover;">`;
+      }else if(item.imgId){
+        thumb.innerHTML = `<img src="${pictoUrl(item.imgId)}" style="width:80%;height:80%;object-fit:contain;">`;
+      }else{
+        thumb.textContent = FALLBACK_EMOJI[item.word] || '❔';
+      }
+
+      const label = document.createElement('span');
+      label.style.flex = '1';
+      label.innerHTML = `${item.word} <small style="color:var(--ink-soft);">(${catLabel} · usado ${item.count||0}x${item.photo ? ' · 📷 foto própria' : ''})</small>`;
+
+      row.appendChild(thumb);
+      row.appendChild(label);
+
+      // Botão de foto (tirar ou escolher da galeria)
+      const photoBtn = document.createElement('label');
+      photoBtn.textContent = '📷';
+      photoBtn.title = 'Adicionar foto real';
+      photoBtn.style.cssText = 'cursor:pointer;padding:4px 8px;border-radius:8px;background:var(--bg-deep);font-size:14px;';
+      const photoInput = document.createElement('input');
+      photoInput.type = 'file';
+      photoInput.accept = 'image/*';
+      photoInput.capture = 'environment';
+      photoInput.style.display = 'none';
+      photoInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        try{
+          const dataUrl = await compressImage(file);
+          item.photo = dataUrl;
+          await saveVocab();
+          renderVocabList();
+          renderGrid();
+          renderFavRow();
+        }catch(err){
+          console.error('Falha ao processar foto', err);
+        }
+      });
+      photoBtn.appendChild(photoInput);
+      row.appendChild(photoBtn);
+
+      if(item.photo){
+        const removePhotoBtn = document.createElement('button');
+        removePhotoBtn.textContent = '🗑️ foto';
+        removePhotoBtn.className = 'btn-secondary';
+        removePhotoBtn.style.cssText = 'padding:4px 8px;font-size:12px;';
+        removePhotoBtn.addEventListener('click', async () => {
+          delete item.photo;
+          await saveVocab();
+          renderVocabList();
+          renderGrid();
+          renderFavRow();
+        });
+        row.appendChild(removePhotoBtn);
+      }
+
       const delBtn = document.createElement('button');
       delBtn.textContent = 'Remover';
       delBtn.className = 'btn-danger';
       delBtn.style.padding = '4px 10px'; delBtn.style.fontSize = '12px';
       delBtn.addEventListener('click', async () => {
+        try{
+          const fb = await waitForFirebase();
+          await fb.deleteDoc(fb.doc(fb.db, fb.VOCAB_COLLECTION, slugify(item.word)));
+        }catch(err){ console.error('Falha ao excluir palavra no Firestore', err); }
         vocab.splice(idx, 1);
-        await saveVocab();
         renderVocabList();
       });
       row.appendChild(delBtn);
