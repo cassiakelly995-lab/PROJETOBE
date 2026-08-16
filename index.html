@@ -227,10 +227,22 @@
     display:none; align-items:center; justify-content:center; z-index:50;
   }
   #caregiverPanel{
-    background:#fff; border-radius:var(--radius-lg); padding:24px;
+    background:#fff; border-radius:var(--radius-lg); padding:0;
     width:min(480px, 92vw); max-height:86vh; overflow-y:auto;
     font-family:inherit;
   }
+  #panelHeader{
+    position:sticky; top:0; background:#fff; z-index:5;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 24px 8px; border-bottom:1px solid var(--border); margin-bottom:4px;
+  }
+  #panelHeader h2{margin:0; font-size:19px;}
+  #panelCloseX{
+    background:var(--bg-deep); color:var(--ink-soft); border:none; border-radius:50%;
+    width:32px; height:32px; font-size:16px; font-weight:700; cursor:pointer; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #panelBody{padding:8px 24px 24px;}
   #caregiverPanel h2{margin-top:0; font-size:20px;}
   #caregiverPanel label{display:block; font-size:13px; font-weight:700; margin:14px 0 4px;}
   #caregiverPanel input, #caregiverPanel select{
@@ -245,9 +257,10 @@
   .btn-primary{background:var(--c-acoes); color:#fff; flex:1;}
   .btn-secondary{background:var(--bg-deep); color:var(--ink);}
   .btn-danger{background:#c0392b; color:#fff;}
-  #vocabList{margin-top:16px; border-top:1px solid var(--border); padding-top:10px;}
-  .vocab-item{display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f0f0f0; font-size:14px;}
-  #pinScreen{display:flex; flex-direction:column; gap:10px; align-items:center;}
+  #vocabSearch{margin-top:14px;}
+  #vocabList{margin-top:12px; border-top:1px solid var(--border); padding-top:10px;}
+  .vocab-item{display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:6px; padding:8px 0; border-bottom:1px solid #f0f0f0; font-size:14px;}
+  #pinScreen{display:flex; flex-direction:column; gap:10px; align-items:center; padding:24px;}
   #pinScreen input{text-align:center; font-size:24px; letter-spacing:8px;}
   #pinError{color:#c0392b; font-size:13px; min-height:16px;}
   .toggle-row{display:flex; align-items:center; justify-content:space-between; margin-top:14px;}
@@ -311,8 +324,12 @@
 <!-- ---------- MODO CUIDADOR ---------- -->
 <div id="caregiverOverlay">
   <div id="caregiverPanel">
+    <div id="panelHeader">
+      <h2 id="panelTitle">Modo cuidador</h2>
+      <button id="panelCloseX" title="Fechar">✕</button>
+    </div>
+    <div id="panelBody">
     <div id="pinScreen">
-      <h2>Modo cuidador</h2>
       <p style="font-size:14px;color:var(--ink-soft);margin:0;">Digite o PIN para configurar o vocabulário.</p>
       <input type="password" id="pinInput" inputmode="numeric" maxlength="4" placeholder="••••">
       <div id="pinError"></div>
@@ -345,6 +362,8 @@
         <button class="btn-secondary" id="resetFavBtn" style="padding:8px 12px;font-size:13px;">Zerar</button>
       </div>
 
+      <input type="text" id="vocabSearch" placeholder="🔎 Buscar palavra no vocabulário…">
+      <div id="vocabCount" style="font-size:12px;color:var(--ink-soft);margin-top:6px;"></div>
       <div id="vocabList"></div>
       </div>
 
@@ -386,6 +405,7 @@
       <div class="row">
         <button class="btn-secondary" id="closeCaregiver" style="flex:1;">Fechar</button>
       </div>
+    </div>
     </div>
   </div>
 </div>
@@ -827,6 +847,7 @@
     overlay.style.display = 'flex';
     pinScreen.style.display = 'flex';
     editScreen.style.display = 'none';
+    document.getElementById('panelTitle').textContent = 'Modo cuidador';
     pinInput.value = ''; pinError.textContent = '';
     pinInput.focus();
   });
@@ -839,6 +860,7 @@
     if(pinInput.value === PIN){
       pinScreen.style.display = 'none';
       editScreen.style.display = 'block';
+      document.getElementById('panelTitle').textContent = 'Painel do cuidador / terapeuta';
       showTab('vocab');
       renderVocabList();
     }else{
@@ -846,13 +868,17 @@
     }
   }
 
-  document.getElementById('closeCaregiver').addEventListener('click', () => {
+  function closeCaregiverPanel(){
     overlay.style.display = 'none';
     renderCategoryBar();
     renderGrid();
     renderFavRow();
     headerSub.textContent = vocab.length + ' símbolos';
-  });
+  }
+  document.getElementById('closeCaregiver').addEventListener('click', closeCaregiverPanel);
+  document.getElementById('panelCloseX').addEventListener('click', closeCaregiverPanel);
+  // Fecha também clicando fora do painel (no fundo escurecido)
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) closeCaregiverPanel(); });
 
   document.getElementById('resetFavBtn').addEventListener('click', async () => {
     vocab.forEach(v => v.count = 0);
@@ -1022,6 +1048,9 @@
     list.querySelectorAll('.goal-delete').forEach(btn => {
       btn.addEventListener('click', async () => {
         const id = btn.getAttribute('data-goal');
+        const goal = goals.find(g => g.id === id);
+        const confirmed = confirm(`Excluir a meta "${goal ? goal.title : ''}"? Isso apaga todo o histórico de tentativas dela.`);
+        if(!confirmed) return;
         try{
           const fb = await waitForFirebase();
           await fb.deleteDoc(fb.doc(fb.db, fb.GOALS_COLLECTION, id));
@@ -1071,10 +1100,31 @@
     });
   }
 
+  let vocabFilter = '';
+  document.getElementById('vocabSearch').addEventListener('input', (e) => {
+    vocabFilter = e.target.value.trim().toLowerCase();
+    renderVocabList();
+  });
+
   function renderVocabList(){
     const list = document.getElementById('vocabList');
-    list.innerHTML = '<div style="font-weight:700;font-size:13px;margin-bottom:6px;">Vocabulário atual (' + vocab.length + ')</div>';
-    vocab.forEach((item, idx) => {
+    const countLabel = document.getElementById('vocabCount');
+    const filtered = vocabFilter
+      ? vocab.filter(v => v.word.toLowerCase().includes(vocabFilter))
+      : vocab;
+
+    countLabel.textContent = vocabFilter
+      ? `${filtered.length} resultado(s) de ${vocab.length} palavra(s)`
+      : `${vocab.length} palavra(s) no total`;
+
+    list.innerHTML = '';
+    if(filtered.length === 0){
+      list.innerHTML = '<p style="font-size:13px;color:var(--ink-soft);">Nenhuma palavra encontrada.</p>';
+      return;
+    }
+
+    filtered.forEach((item) => {
+      const idx = vocab.indexOf(item);
       const row = document.createElement('div');
       row.className = 'vocab-item';
       row.style.flexWrap = 'wrap';
@@ -1160,12 +1210,16 @@
       delBtn.className = 'btn-danger';
       delBtn.style.padding = '4px 10px'; delBtn.style.fontSize = '12px';
       delBtn.addEventListener('click', async () => {
+        const confirmed = confirm(`Remover "${item.word}" do vocabulário? Isso apaga também a foto, se tiver.`);
+        if(!confirmed) return;
         try{
           const fb = await waitForFirebase();
           await fb.deleteDoc(fb.doc(fb.db, fb.VOCAB_COLLECTION, slugify(item.word)));
         }catch(err){ console.error('Falha ao excluir palavra no Firestore', err); }
         vocab.splice(idx, 1);
         renderVocabList();
+        renderGrid();
+        renderFavRow();
       });
       row.appendChild(delBtn);
       list.appendChild(row);
