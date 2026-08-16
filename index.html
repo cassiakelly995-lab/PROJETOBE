@@ -180,6 +180,7 @@
     align-content:start;
   }
   .symbol-btn{
+    position:relative;
     display:flex;
     flex-direction:column;
     align-items:center;
@@ -196,6 +197,7 @@
     box-shadow:var(--shadow-soft);
     transition:transform 0.12s ease, box-shadow 0.12s ease;
     font-family:inherit;
+    overflow:hidden;
   }
   .symbol-btn:active{transform:scale(0.94); box-shadow:var(--shadow-lift);}
   .symbol-btn:focus-visible{outline:3px solid var(--focus); outline-offset:2px;}
@@ -211,6 +213,20 @@
   .symbol-btn img{width:128px;height:128px;object-fit:contain;margin-bottom:10px;}
   .symbol-btn .fallback-emoji{font-size:76px;margin-bottom:10px;}
   .symbol-btn span{font-size:20px;font-weight:700;text-align:center;line-height:1.2;}
+
+  /* Fotos reais preenchem o card inteiro, tipo um cartão de foto de verdade */
+  .symbol-btn.has-photo{ padding:0; align-items:stretch; }
+  .symbol-btn.has-photo img{
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover; margin:0; border-radius:0;
+  }
+  .symbol-btn.has-photo span{
+    position:relative; z-index:1;
+    width:100%; text-align:center;
+    color:#fff; padding:24px 8px 10px;
+    background:linear-gradient(to top, rgba(0,0,0,0.72), rgba(0,0,0,0.0));
+    text-shadow:0 1px 3px rgba(0,0,0,0.5);
+  }
 
   @media (min-width: 900px){
     #grid{ grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); }
@@ -675,7 +691,7 @@
     const info = catInfo(activeCat);
     items.forEach(item => {
       const btn = document.createElement('button');
-      btn.className = 'symbol-btn';
+      btn.className = 'symbol-btn' + (item.photo ? ' has-photo' : '');
       btn.style.borderTopColor = info.color;
       btn.setAttribute('aria-label', item.word);
 
