@@ -294,6 +294,7 @@
   <h1>Minha Voz</h1>
   <div class="sub" id="headerSub"></div>
   <button id="testSoundBtn" style="border:none;background:var(--bg-deep);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🔊 Testar som</button>
+  <button id="testFirebaseBtn" style="border:none;background:var(--bg-deep);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🔥 Testar Firebase</button>
 </div>
 
 <div id="sentenceBar">
@@ -535,7 +536,12 @@
         const id = slugify(item.word);
         return fb.setDoc(fb.doc(fb.db, fb.VOCAB_COLLECTION, id), item);
       }));
-    }catch(e){ console.error('Falha ao salvar vocabulário no Firestore', e); }
+      return true;
+    }catch(e){
+      console.error('Falha ao salvar vocabulário no Firestore', e);
+      headerSub.textContent = '❌ Firebase: ' + (e.code || e.message || 'erro ao salvar');
+      return false;
+    }
   }
 
   function slugify(word){
@@ -743,6 +749,21 @@
     const chosen = bestVoice();
     headerSub.textContent = ptVoices.length + ' voz(es) em pt · usando: ' + (chosen ? chosen.name : 'padrão do sistema');
     speak('Olá, teste de som funcionando');
+  });
+
+  document.getElementById('testFirebaseBtn').addEventListener('click', async () => {
+    headerSub.textContent = '⏳ Testando conexão com o Firebase…';
+    try{
+      const fb = await waitForFirebase();
+      const testId = 'teste_conexao';
+      await fb.setDoc(fb.doc(fb.db, fb.VOCAB_COLLECTION, testId), { teste: true, quando: new Date().toISOString() });
+      const snap = await fb.getDocs(fb.collection(fb.db, fb.VOCAB_COLLECTION));
+      await fb.deleteDoc(fb.doc(fb.db, fb.VOCAB_COLLECTION, testId));
+      headerSub.textContent = '✅ Firebase conectado! (' + snap.size + ' documento(s) na coleção)';
+    }catch(e){
+      headerSub.textContent = '❌ Firebase falhou: ' + (e.code || e.message || 'erro desconhecido');
+      console.error('Teste do Firebase falhou', e);
+    }
   });
 
   async function selectSymbol(item, sourceEl){
@@ -1079,29 +1100,45 @@
       // Botão de foto (tirar ou escolher da galeria)
       const photoBtn = document.createElement('label');
       photoBtn.textContent = '📷';
-      photoBtn.title = 'Adicionar foto real';
+      photoBtn.title = 'Adicionar foto real (câmera ou galeria)';
       photoBtn.style.cssText = 'cursor:pointer;padding:4px 8px;border-radius:8px;background:var(--bg-deep);font-size:14px;';
       const photoInput = document.createElement('input');
       photoInput.type = 'file';
       photoInput.accept = 'image/*';
-      photoInput.capture = 'environment';
+      // Sem "capture": deixa o navegador oferecer câmera E galeria pra escolher
       photoInput.style.display = 'none';
+
+      const photoStatus = document.createElement('div');
+      photoStatus.style.cssText = 'width:100%;font-size:11px;margin-top:2px;';
+
       photoInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if(!file) return;
+        photoStatus.textContent = '⏳ Salvando foto…';
+        photoStatus.style.color = 'var(--ink-soft)';
         try{
           const dataUrl = await compressImage(file);
           item.photo = dataUrl;
-          await saveVocab();
-          renderVocabList();
-          renderGrid();
-          renderFavRow();
+          const ok = await saveVocab();
+          if(ok){
+            photoStatus.textContent = '✅ Foto salva!';
+            photoStatus.style.color = 'var(--c-acoes)';
+            renderGrid();
+            renderFavRow();
+            setTimeout(() => renderVocabList(), 600);
+          }else{
+            photoStatus.textContent = '❌ Não conseguiu salvar no Firebase (veja as permissões do Firestore).';
+            photoStatus.style.color = '#c0392b';
+          }
         }catch(err){
           console.error('Falha ao processar foto', err);
+          photoStatus.textContent = '❌ Erro ao processar a foto: ' + (err.message || err);
+          photoStatus.style.color = '#c0392b';
         }
       });
       photoBtn.appendChild(photoInput);
       row.appendChild(photoBtn);
+      row.appendChild(photoStatus);
 
       if(item.photo){
         const removePhotoBtn = document.createElement('button');
