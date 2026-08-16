@@ -207,7 +207,10 @@
     overflow-y:auto;
     align-content:start;
     will-change:transform, opacity;
+    transition:transform 0.2s ease;
   }
+  /* Enquanto o dedo está arrastando, a folha segue o dedo sem atraso (sem transition) */
+  #grid.dragging{ transition:none; }
   /* Efeito de "virar a página" da pasta ao trocar de categoria por toque */
   #grid.page-turn-out-left{ animation:pageTurnOutLeft 0.22s ease forwards; }
   #grid.page-turn-out-right{ animation:pageTurnOutRight 0.22s ease forwards; }
@@ -889,15 +892,79 @@
   }
 
   // ---------- Navegação por toque na tela entre categorias (feito como "folhas de pasta") ----------
+  // A folha acompanha o dedo em tempo real durante o arrasto (feedback visual imediato,
+  // importante pra criança perceber na hora que o toque "pegou"), e o limite pra virar
+  // a página é bem baixo — um arrasto curto ou até um "flick" rápido já é suficiente.
   const gridViewport = document.getElementById('gridViewport');
   const prevPageBtn = document.getElementById('prevPageBtn');
   const nextPageBtn = document.getElementById('nextPageBtn');
-  let touchStartX = 0, touchStartY = 0, touchTracking = false;
-  const SWIPE_MIN_DISTANCE = 46;   // distância mínima em px pra contar como "virar página"
-  const SWIPE_MAX_OFF_AXIS = 60;   // tolerância vertical, pra não confundir com rolagem da grade
+
+  const SWIPE_MIN_DISTANCE = 28;    // px — bem curto, fácil de atingir
+  const SWIPE_MIN_VELOCITY = 0.25;  // px/ms — um toque rápido também conta, mesmo com pouco percurso
+  const DIRECTION_LOCK_PX = 10;     // px de movimento pra decidir se é arrasto horizontal ou rolagem vertical
+
+  let dragStartX = 0, dragStartY = 0, dragStartTime = 0;
+  let dragCurrentX = 0;
+  let dragging = false;
+  let dragLockedHorizontal = false;
 
   function currentCatIndex(){
     return CATEGORIES.findIndex(c => c.id === activeCat);
+  }
+
+  function onDragStart(x, y){
+    dragStartX = x; dragStartY = y; dragCurrentX = x;
+    dragStartTime = Date.now();
+    dragging = true;
+    dragLockedHorizontal = false;
+  }
+
+  function onDragMove(x, y){
+    if(!dragging) return false;
+    const dx = x - dragStartX;
+    const dy = y - dragStartY;
+    if(!dragLockedHorizontal){
+      if(Math.abs(dx) > DIRECTION_LOCK_PX && Math.abs(dx) > Math.abs(dy)){
+        dragLockedHorizontal = true;
+        grid.classList.add('dragging');
+      }else if(Math.abs(dy) > DIRECTION_LOCK_PX){
+        dragging = false; // movimento vertical: deixa a grade rolar normalmente
+        return false;
+      }
+    }
+    if(dragLockedHorizontal){
+      dragCurrentX = x;
+      const idx = currentCatIndex();
+      // resistência nas pontas: já é a primeira/última categoria, arrasta "com peso"
+      let resisted = dx;
+      if((idx === 0 && dx > 0) || (idx === CATEGORIES.length - 1 && dx < 0)) resisted = dx * 0.35;
+      grid.style.transform = `translateX(${resisted}px)`;
+      return true;
+    }
+    return false;
+  }
+
+  function onDragEnd(){
+    if(!dragging) return;
+    dragging = false;
+    if(!dragLockedHorizontal) return;
+
+    const dx = dragCurrentX - dragStartX;
+    const elapsed = Math.max(1, Date.now() - dragStartTime);
+    const velocity = Math.abs(dx) / elapsed;
+    const idx = currentCatIndex();
+
+    const wantsNext = dx < 0 && (Math.abs(dx) >= SWIPE_MIN_DISTANCE || velocity >= SWIPE_MIN_VELOCITY);
+    const wantsPrev = dx > 0 && (Math.abs(dx) >= SWIPE_MIN_DISTANCE || velocity >= SWIPE_MIN_VELOCITY);
+
+    grid.classList.remove('dragging');
+    grid.style.transform = '';
+
+    if(wantsNext && idx < CATEGORIES.length - 1){
+      goToCategory(CATEGORIES[idx + 1].id, true, 'next');
+    }else if(wantsPrev && idx > 0){
+      goToCategory(CATEGORIES[idx - 1].id, true, 'prev');
+    }
   }
 
   // direction: 'next' (esquerda→direita do dedo = próxima categoria) ou 'prev'
@@ -952,35 +1019,26 @@
 
   gridViewport.addEventListener('touchstart', (e) => {
     if(e.touches.length !== 1) return;
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-    touchTracking = true;
+    onDragStart(e.touches[0].clientX, e.touches[0].clientY);
   }, { passive:true });
 
-  gridViewport.addEventListener('touchend', (e) => {
-    if(!touchTracking) return;
-    touchTracking = false;
-    const touch = e.changedTouches[0];
-    const dx = touch.clientX - touchStartX;
-    const dy = touch.clientY - touchStartY;
-    if(Math.abs(dy) > SWIPE_MAX_OFF_AXIS) return; // foi rolagem vertical, não é troca de categoria
-    if(dx <= -SWIPE_MIN_DISTANCE){
-      nextCategory(); // arrastou pra esquerda -> próxima "folha"
-    }else if(dx >= SWIPE_MIN_DISTANCE){
-      prevCategory(); // arrastou pra direita -> "folha" anterior
-    }
-  }, { passive:true });
+  gridViewport.addEventListener('touchmove', (e) => {
+    if(e.touches.length !== 1) return;
+    const handled = onDragMove(e.touches[0].clientX, e.touches[0].clientY);
+    if(handled) e.preventDefault(); // segura a rolagem da página enquanto vira a folha
+  }, { passive:false });
 
-  // Também funciona com mouse (arrastar), útil pra testar em computador/tablet com trackpad
-  let mouseStartX = 0, mouseDown = false;
-  gridViewport.addEventListener('mousedown', (e) => { mouseDown = true; mouseStartX = e.clientX; });
-  window.addEventListener('mouseup', (e) => {
-    if(!mouseDown) return;
-    mouseDown = false;
-    const dx = e.clientX - mouseStartX;
-    if(dx <= -SWIPE_MIN_DISTANCE) nextCategory();
-    else if(dx >= SWIPE_MIN_DISTANCE) prevCategory();
+  gridViewport.addEventListener('touchend', onDragEnd);
+  gridViewport.addEventListener('touchcancel', () => {
+    dragging = false;
+    grid.classList.remove('dragging');
+    grid.style.transform = '';
   });
+
+  // Também funciona arrastando com o mouse, útil pra testar em computador
+  gridViewport.addEventListener('mousedown', (e) => { onDragStart(e.clientX, e.clientY); });
+  window.addEventListener('mousemove', (e) => { if(dragging) onDragMove(e.clientX, e.clientY); });
+  window.addEventListener('mouseup', onDragEnd);
 
   // Dá uma nota de qualidade a cada voz em pt para escolher a melhor por padrão.
   function scoreVoice(v){
