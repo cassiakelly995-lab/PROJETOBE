@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Minha Voz — Prancha CAA</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="theme-color" content="#7c4fd6">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
@@ -133,6 +137,24 @@
   #speakBtn:hover{filter:brightness(1.06);}
   #clearBtn{background:var(--bg-deep); color:var(--ink-soft);}
   #settingsBtn{background:transparent; color:#b9b4aa; font-size:20px; width:52px; padding:0;}
+
+  /* ---------- MODO TRAVADO (KIOSK) ---------- */
+  #lockBtn{
+    display:none; border:none; background:transparent; color:#b9b4aa;
+    font-size:18px; width:44px; height:44px; cursor:pointer; flex-shrink:0;
+  }
+  #lockOverlay{
+    position:fixed; inset:0; background:var(--bg); z-index:100;
+    display:none; flex-direction:column; align-items:center; justify-content:center;
+    gap:16px; text-align:center; padding:24px;
+  }
+  #lockOverlay .lock-icon{font-size:56px;}
+  #lockOverlay h2{margin:0; font-size:20px;}
+  #lockOverlay p{margin:0; color:var(--ink-soft); font-size:14px; max-width:320px;}
+  #lockOverlay button{
+    border:none; border-radius:12px; padding:14px 22px; font-weight:700; font-size:15px;
+    background:var(--c-nucleo); color:#fff; cursor:pointer; font-family:inherit;
+  }
 
   /* ---------- FAVORITOS ---------- */
   #favRow{
@@ -322,8 +344,6 @@
   <div class="logo">💬</div>
   <h1>Minha Voz</h1>
   <div class="sub" id="headerSub"></div>
-  <button id="testSoundBtn" style="border:none;background:var(--bg-deep);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🔊 Testar som</button>
-  <button id="testFirebaseBtn" style="border:none;background:var(--bg-deep);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🔥 Testar Firebase</button>
 </div>
 
 <div id="sentenceBar">
@@ -331,11 +351,19 @@
   <button class="bar-btn" id="speakBtn" title="Falar frase">🔊 Falar</button>
   <button class="bar-btn" id="clearBtn" title="Limpar frase">🗑️</button>
   <button class="bar-btn" id="settingsBtn" title="Modo cuidador">⚙️</button>
+  <button id="lockBtn" title="Tela travada — toque para desbloquear">🔒</button>
 </div>
 
 <div id="favRow"></div>
 <div id="categoryBar"></div>
 <div id="grid"><div id="loadingMsg">Carregando símbolos…</div></div>
+
+<div id="lockOverlay">
+  <div class="lock-icon">🔒</div>
+  <h2>Tela travada</h2>
+  <p>Só o cuidador pode sair dessa tela. Peça para digitar o PIN.</p>
+  <button id="lockUnlockBtn">Digitar PIN pra desbloquear</button>
+</div>
 
 <!-- ---------- MODO CUIDADOR ---------- -->
 <div id="caregiverOverlay">
@@ -356,10 +384,16 @@
     </div>
 
     <div id="editScreen" style="display:none;">
-      <div class="tab-row">
+      <div class="toggle-row" style="background:var(--c-nucleo-soft); padding:10px 12px; border-radius:12px; margin-top:0;">
+        <span>🔒 Travar tablet neste app</span>
+        <button class="btn-primary" id="lockActivateBtn" style="padding:8px 12px;font-size:13px;">Ativar</button>
+      </div>
+
+      <div class="tab-row" style="flex-wrap:wrap;">
         <button class="tab-btn active" id="tabVocabBtn">📚 Vocabulário</button>
-        <button class="tab-btn" id="tabGoalsBtn">🎯 Metas terapêuticas</button>
+        <button class="tab-btn" id="tabGoalsBtn">🎯 Metas</button>
         <button class="tab-btn" id="tabVoiceBtn">🔊 Voz</button>
+        <button class="tab-btn" id="tabDiagBtn">🛠️ Diagnóstico</button>
       </div>
 
       <div id="vocabTab">
@@ -395,6 +429,16 @@
           <button class="btn-primary" id="addGoalBtn">Criar meta</button>
         </div>
 
+        <div class="row">
+          <button class="btn-secondary" id="genReportBtn" style="flex:1;">📄 Gerar relatório (pra levar pra fono)</button>
+        </div>
+        <div id="reportBox" style="display:none; margin-top:12px; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-md); padding:14px;">
+          <textarea id="reportText" readonly style="width:100%; min-height:220px; border:none; background:transparent; font-family:inherit; font-size:13px; line-height:1.5; resize:vertical;"></textarea>
+          <div class="row">
+            <button class="btn-secondary" id="copyReportBtn" style="flex:1;">📋 Copiar texto</button>
+          </div>
+        </div>
+
         <div id="goalsList" style="margin-top:18px;"></div>
       </div>
 
@@ -418,6 +462,26 @@
         <div id="voiceStatus" style="font-size:13px;color:var(--ink-soft);margin-top:10px;"></div>
       </div>
 
+      <div id="diagTab" style="display:none;">
+        <h2>Diagnóstico e segurança</h2>
+
+        <div class="row" style="margin-top:0;">
+          <button class="btn-secondary" id="testSoundBtn" style="flex:1;">🔊 Testar som</button>
+          <button class="btn-secondary" id="testFirebaseBtn" style="flex:1;">🔥 Testar Firebase</button>
+        </div>
+        <div id="diagStatus" style="font-size:13px;color:var(--ink-soft);margin-top:8px; min-height:18px;"></div>
+
+        <label for="connStatus" style="margin-top:18px;">Conexão</label>
+        <div id="connStatus" style="font-size:14px;font-weight:600;"></div>
+
+        <label for="newPinInput">Trocar PIN do cuidador</label>
+        <input type="password" id="newPinInput" inputmode="numeric" maxlength="4" placeholder="Novo PIN de 4 dígitos">
+        <div class="row">
+          <button class="btn-primary" id="changePinBtn">Salvar novo PIN</button>
+        </div>
+        <div id="pinChangeStatus" style="font-size:13px;color:var(--ink-soft);margin-top:8px;"></div>
+      </div>
+
       <div class="row">
         <button class="btn-secondary" id="closeCaregiver" style="flex:1;">Fechar</button>
       </div>
@@ -430,7 +494,8 @@
   // ---------- Firebase (projeto: cassia-assistencia-v8) ----------
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import {
-    getFirestore, collection, doc, getDocs, setDoc, deleteDoc
+    getFirestore, collection, doc, getDocs, setDoc, deleteDoc,
+    enableIndexedDbPersistence
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -445,6 +510,16 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+
+  // Ativa cache offline: o app funciona (lê e escreve) sem internet,
+  // e sincroniza sozinho com o Firebase assim que a conexão voltar.
+  try{
+    await enableIndexedDbPersistence(db);
+  }catch(e){
+    // 'failed-precondition' = já aberto em outra aba; 'unimplemented' = navegador não suporta.
+    // Em ambos os casos o app continua funcionando, só sem cache offline completo.
+    console.warn('Persistência offline não pôde ser ativada:', e.code || e.message);
+  }
 
   // Coleções exclusivas deste app, separadas do resto do projeto da assistência
   const VOCAB_COLLECTION = 'minha_voz_vocabulario';
@@ -508,7 +583,29 @@
   const STORAGE_KEY = 'caa_vocab_v2';
   const GOALS_KEY = 'caa_goals_v1';
   const VOICE_KEY = 'caa_voice_v1';
-  const PIN = '1234'; // PIN de exemplo — trocar antes do uso real
+  const PIN_HASH_KEY = 'caa_pin_hash';
+  // Hash SHA-256 do PIN padrão "1234" — o PIN em si não fica exposto no código.
+  // Quem trocar o PIN pelo painel (aba Diagnóstico) grava um novo hash no lugar deste.
+  const DEFAULT_PIN_HASH = '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4';
+
+  async function sha256Hex(text){
+    const enc = new TextEncoder().encode(text);
+    const buf = await crypto.subtle.digest('SHA-256', enc);
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  function getPinHash(){
+    try{
+      const stored = localStorage.getItem(PIN_HASH_KEY);
+      if(stored) return stored;
+    }catch(e){ /* ok, usa o padrão */ }
+    return DEFAULT_PIN_HASH;
+  }
+
+  async function verifyPin(candidate){
+    const hash = await sha256Hex(candidate);
+    return hash === getPinHash();
+  }
 
   let vocab = [];
   let goals = [];
@@ -575,7 +672,20 @@
       return true;
     }catch(e){
       console.error('Falha ao salvar vocabulário no Firestore', e);
-      headerSub.textContent = '❌ Firebase: ' + (e.code || e.message || 'erro ao salvar');
+      return false;
+    }
+  }
+
+  // Grava só UM item alterado — usar sempre que só uma palavra mudou
+  // (evita reescrever o vocabulário inteiro no Firestore a cada toque)
+  async function saveVocabItem(item){
+    try{
+      const fb = await waitForFirebase();
+      const id = slugify(item.word);
+      await fb.setDoc(fb.doc(fb.db, fb.VOCAB_COLLECTION, id), item);
+      return true;
+    }catch(e){
+      console.error('Falha ao salvar item no Firestore', e);
       return false;
     }
   }
@@ -617,6 +727,18 @@
       const fb = await waitForFirebase();
       await Promise.all(goals.map(goal => fb.setDoc(fb.doc(fb.db, fb.GOALS_COLLECTION, goal.id), goal)));
     }catch(e){ console.error('Falha ao salvar metas no Firestore', e); }
+  }
+
+  // Grava só UMA meta alterada — usar sempre que só uma meta mudou
+  async function saveGoalItem(goal){
+    try{
+      const fb = await waitForFirebase();
+      await fb.setDoc(fb.doc(fb.db, fb.GOALS_COLLECTION, goal.id), goal);
+      return true;
+    }catch(e){
+      console.error('Falha ao salvar meta no Firestore', e);
+      return false;
+    }
   }
 
   async function init(){
@@ -777,30 +899,60 @@
   }
 
   document.getElementById('testSoundBtn').addEventListener('click', () => {
+    const diagStatus = document.getElementById('diagStatus');
     if(!('speechSynthesis' in window)){
-      headerSub.textContent = 'Fala não suportada neste navegador/app.';
+      diagStatus.textContent = 'Fala não suportada neste navegador/app.';
       return;
     }
     const ptVoices = getPtVoices();
     const chosen = bestVoice();
-    headerSub.textContent = ptVoices.length + ' voz(es) em pt · usando: ' + (chosen ? chosen.name : 'padrão do sistema');
+    diagStatus.textContent = ptVoices.length + ' voz(es) em pt · usando: ' + (chosen ? chosen.name : 'padrão do sistema');
     speak('Olá, teste de som funcionando');
   });
 
   document.getElementById('testFirebaseBtn').addEventListener('click', async () => {
-    headerSub.textContent = '⏳ Testando conexão com o Firebase…';
+    const diagStatus = document.getElementById('diagStatus');
+    diagStatus.textContent = '⏳ Testando conexão com o Firebase…';
     try{
       const fb = await waitForFirebase();
       const testId = 'teste_conexao';
       await fb.setDoc(fb.doc(fb.db, fb.VOCAB_COLLECTION, testId), { teste: true, quando: new Date().toISOString() });
       const snap = await fb.getDocs(fb.collection(fb.db, fb.VOCAB_COLLECTION));
       await fb.deleteDoc(fb.doc(fb.db, fb.VOCAB_COLLECTION, testId));
-      headerSub.textContent = '✅ Firebase conectado! (' + snap.size + ' documento(s) na coleção)';
+      diagStatus.textContent = '✅ Firebase conectado! (' + snap.size + ' documento(s) na coleção)';
     }catch(e){
-      headerSub.textContent = '❌ Firebase falhou: ' + (e.code || e.message || 'erro desconhecido');
+      diagStatus.textContent = '❌ Firebase falhou: ' + (e.code || e.message || 'erro desconhecido');
       console.error('Teste do Firebase falhou', e);
     }
   });
+
+  document.getElementById('changePinBtn').addEventListener('click', async () => {
+    const statusEl = document.getElementById('pinChangeStatus');
+    const newPin = document.getElementById('newPinInput').value.trim();
+    if(!/^\d{4}$/.test(newPin)){
+      statusEl.textContent = 'Digite exatamente 4 números.';
+      statusEl.style.color = '#c0392b';
+      return;
+    }
+    const hash = await sha256Hex(newPin);
+    try{
+      localStorage.setItem(PIN_HASH_KEY, hash);
+      statusEl.textContent = '✅ PIN alterado! Use o novo PIN da próxima vez.';
+      statusEl.style.color = 'var(--c-acoes)';
+      document.getElementById('newPinInput').value = '';
+    }catch(e){
+      statusEl.textContent = '❌ Não deu pra salvar (armazenamento do navegador bloqueado).';
+      statusEl.style.color = '#c0392b';
+    }
+  });
+
+  function updateConnStatus(){
+    const el = document.getElementById('connStatus');
+    if(!el) return;
+    el.textContent = navigator.onLine ? '🟢 Online' : '🟠 Offline (mudanças serão sincronizadas quando voltar a internet)';
+  }
+  window.addEventListener('online', updateConnStatus);
+  window.addEventListener('offline', updateConnStatus);
 
   async function selectSymbol(item, sourceEl){
     if(sourceEl){
@@ -812,7 +964,7 @@
     sentence.push(item);
     renderSentence();
     renderFavRow();
-    await saveVocab();
+    await saveVocabItem(item);
   }
 
   function selectSymbolReplay(item, chipEl){
@@ -858,6 +1010,7 @@
   const editScreen = document.getElementById('editScreen');
   const pinInput = document.getElementById('pinInput');
   const pinError = document.getElementById('pinError');
+  let pinAction = 'open'; // 'open' = abrir painel | 'unlock' = só destravar a tela
 
   document.getElementById('settingsBtn').addEventListener('click', () => {
     overlay.style.display = 'flex';
@@ -865,6 +1018,7 @@
     editScreen.style.display = 'none';
     document.getElementById('panelTitle').textContent = 'Modo cuidador';
     pinInput.value = ''; pinError.textContent = '';
+    pinAction = 'open';
     pinInput.focus();
   });
 
@@ -872,13 +1026,20 @@
   document.getElementById('pinConfirm').addEventListener('click', tryPin);
   pinInput.addEventListener('keydown', e => { if(e.key === 'Enter') tryPin(); });
 
-  function tryPin(){
-    if(pinInput.value === PIN){
+  async function tryPin(){
+    const ok = await verifyPin(pinInput.value);
+    if(ok){
       pinScreen.style.display = 'none';
-      editScreen.style.display = 'block';
-      document.getElementById('panelTitle').textContent = 'Painel do cuidador / terapeuta';
-      showTab('vocab');
-      renderVocabList();
+      pinError.textContent = '';
+      if(pinAction === 'unlock'){
+        overlay.style.display = 'none';
+        deactivateLock();
+      }else{
+        editScreen.style.display = 'block';
+        document.getElementById('panelTitle').textContent = 'Painel do cuidador / terapeuta';
+        showTab('vocab');
+        renderVocabList();
+      }
     }else{
       pinError.textContent = 'PIN incorreto.';
     }
@@ -895,6 +1056,84 @@
   document.getElementById('panelCloseX').addEventListener('click', closeCaregiverPanel);
   // Fecha também clicando fora do painel (no fundo escurecido)
   overlay.addEventListener('click', (e) => { if(e.target === overlay) closeCaregiverPanel(); });
+
+  // ---------- Modo travado (kiosk) ----------
+  const LOCK_KEY = 'caa_lock_mode';
+  let lockModeActive = false;
+  try{ lockModeActive = localStorage.getItem(LOCK_KEY) === '1'; }catch(e){ /* ok */ }
+
+  const lockBtn = document.getElementById('lockBtn');
+  const lockOverlay = document.getElementById('lockOverlay');
+  const settingsBtnEl = document.getElementById('settingsBtn');
+
+  function updateLockUI(){
+    settingsBtnEl.style.display = lockModeActive ? 'none' : '';
+    lockBtn.style.display = lockModeActive ? 'flex' : 'none';
+  }
+
+  async function requestKioskFullscreen(){
+    try{
+      if(document.documentElement.requestFullscreen){
+        await document.documentElement.requestFullscreen();
+      }
+    }catch(e){ console.warn('Não foi possível entrar em tela cheia', e); }
+  }
+
+  document.getElementById('lockActivateBtn').addEventListener('click', async () => {
+    lockModeActive = true;
+    try{ localStorage.setItem(LOCK_KEY, '1'); }catch(e){ /* ok */ }
+    updateLockUI();
+    closeCaregiverPanel();
+    await requestKioskFullscreen();
+  });
+
+  function deactivateLock(){
+    lockModeActive = false;
+    try{ localStorage.setItem(LOCK_KEY, '0'); }catch(e){ /* ok */ }
+    updateLockUI();
+    lockOverlay.style.display = 'none';
+    if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(()=>{});
+  }
+
+  lockBtn.addEventListener('click', () => {
+    // Abre a tela de PIN; ao confirmar corretamente, desativa a trava
+    overlay.style.display = 'flex';
+    pinScreen.style.display = 'flex';
+    editScreen.style.display = 'none';
+    document.getElementById('panelTitle').textContent = 'Desbloquear tela';
+    pinInput.value = ''; pinError.textContent = '';
+    pinAction = 'unlock';
+    pinInput.focus();
+  });
+
+  document.getElementById('lockUnlockBtn').addEventListener('click', () => {
+    lockOverlay.style.display = 'none';
+    overlay.style.display = 'flex';
+    pinScreen.style.display = 'flex';
+    editScreen.style.display = 'none';
+    document.getElementById('panelTitle').textContent = 'Desbloquear tela';
+    pinInput.value = ''; pinError.textContent = '';
+    pinAction = 'unlock';
+    pinInput.focus();
+  });
+
+  // Se a criança sair da tela cheia (botão voltar/gesto do Android), mostra a tela de bloqueio
+  document.addEventListener('fullscreenchange', () => {
+    if(lockModeActive && !document.fullscreenElement){
+      lockOverlay.style.display = 'flex';
+    }else{
+      lockOverlay.style.display = 'none';
+    }
+  });
+
+  // Evita menu de contexto (toque longo) chamativo durante o uso travado
+  document.addEventListener('contextmenu', (e) => { if(lockModeActive) e.preventDefault(); });
+
+  updateLockUI();
+  if(lockModeActive){
+    // Reabre travado se a página recarregar com o modo já ativado antes
+    window.addEventListener('load', () => { lockOverlay.style.display = 'flex'; });
+  }
 
   document.getElementById('resetFavBtn').addEventListener('click', async () => {
     vocab.forEach(v => v.count = 0);
@@ -918,12 +1157,13 @@
     });
   }
 
-  // ---------- Abas do painel (corrigido: sempre esconde as 3, mostra só 1) ----------
+  // ---------- Abas do painel (corrigido: sempre esconde todas, mostra só 1) ----------
   function showTab(tab){
     const tabs = {
       vocab:  { btn:'tabVocabBtn',  panel:'vocabTab'  },
       goals:  { btn:'tabGoalsBtn',  panel:'goalsTab'  },
       voice:  { btn:'tabVoiceBtn',  panel:'voiceTab'  },
+      diag:   { btn:'tabDiagBtn',   panel:'diagTab'   },
     };
     Object.keys(tabs).forEach(key => {
       const isActive = key === tab;
@@ -932,11 +1172,13 @@
     });
     if(tab === 'goals') renderGoalsList();
     if(tab === 'voice') populateVoiceSelect();
+    if(tab === 'diag') updateConnStatus();
   }
 
   document.getElementById('tabVocabBtn').addEventListener('click', () => showTab('vocab'));
   document.getElementById('tabGoalsBtn').addEventListener('click', () => showTab('goals'));
   document.getElementById('tabVoiceBtn').addEventListener('click', () => showTab('voice'));
+  document.getElementById('tabDiagBtn').addEventListener('click', () => showTab('diag'));
 
   // ---------- Aba de Voz ----------
   function populateVoiceSelect(){
@@ -998,9 +1240,10 @@
     const title = document.getElementById('goalTitle').value.trim();
     const cat = document.getElementById('goalCat').value;
     if(!title) return;
-    goals.push({ id: Date.now().toString(), title, cat, trials: [] });
+    const newGoal = { id: Date.now().toString(), title, cat, trials: [] };
+    goals.push(newGoal);
     document.getElementById('goalTitle').value = '';
-    await saveGoals();
+    await saveGoalItem(newGoal);
     renderGoalsList();
   });
 
@@ -1011,6 +1254,92 @@
     { id:'fisica',       label:'Dica física' },
     { id:'sem_resposta', label:'Sem resposta' },
   ];
+
+  // ---------- Relatório de metas (texto pronto pra levar pra fono) ----------
+  function formatDate(iso){
+    try{ return new Date(iso).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' }); }
+    catch(e){ return iso; }
+  }
+
+  function buildReportText(){
+    const now = new Date().toLocaleDateString('pt-BR');
+    let lines = [];
+    lines.push('RELATÓRIO DE ACOMPANHAMENTO — Minha Voz (CAA)');
+    lines.push('Gerado em: ' + now);
+    lines.push('='.repeat(48));
+    lines.push('');
+
+    if(goals.length === 0){
+      lines.push('Nenhuma meta cadastrada ainda.');
+      return lines.join('\n');
+    }
+
+    goals.forEach((goal, i) => {
+      const trials = goal.trials || [];
+      const catLabel = goal.cat ? catInfo(goal.cat).label : 'geral';
+      lines.push(`${i+1}. META: ${goal.title}`);
+      lines.push(`   Categoria: ${catLabel}`);
+      lines.push(`   Total de tentativas registradas: ${trials.length}`);
+
+      if(trials.length > 0){
+        const counts = {};
+        PROMPT_LEVELS.forEach(l => counts[l.id] = 0);
+        trials.forEach(t => { counts[t.level] = (counts[t.level] || 0) + 1; });
+
+        lines.push('   Distribuição por nível de apoio:');
+        PROMPT_LEVELS.forEach(l => {
+          const n = counts[l.id] || 0;
+          const pct = Math.round((n / trials.length) * 100);
+          lines.push(`     - ${l.label}: ${n} (${pct}%)`);
+        });
+
+        const first = trials[0];
+        const last = trials[trials.length - 1];
+        lines.push(`   Primeira tentativa: ${formatDate(first.date)}`);
+        lines.push(`   Última tentativa: ${formatDate(last.date)}`);
+
+        // Tendência: compara a primeira metade com a segunda metade das tentativas
+        if(trials.length >= 4){
+          const mid = Math.floor(trials.length / 2);
+          const firstHalf = trials.slice(0, mid);
+          const secondHalf = trials.slice(mid);
+          const indepRate = arr => arr.filter(t => t.level === 'independente').length / arr.length;
+          const r1 = indepRate(firstHalf), r2 = indepRate(secondHalf);
+          const delta = Math.round((r2 - r1) * 100);
+          if(delta > 5) lines.push(`   Tendência: melhora de ${delta} pontos percentuais em respostas independentes.`);
+          else if(delta < -5) lines.push(`   Tendência: queda de ${Math.abs(delta)} pontos percentuais em respostas independentes.`);
+          else lines.push('   Tendência: estável no período.');
+        }
+      }
+      lines.push('');
+    });
+
+    lines.push('='.repeat(48));
+    lines.push('Relatório gerado automaticamente pelo app "Minha Voz". Níveis de apoio seguem terminologia ABA/DTT (Independente, Dica gestual, Dica verbal, Dica física, Sem resposta).');
+    return lines.join('\n');
+  }
+
+  document.getElementById('genReportBtn').addEventListener('click', () => {
+    const box = document.getElementById('reportBox');
+    const textEl = document.getElementById('reportText');
+    textEl.value = buildReportText();
+    box.style.display = 'block';
+    box.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  });
+
+  document.getElementById('copyReportBtn').addEventListener('click', async () => {
+    const textEl = document.getElementById('reportText');
+    const btn = document.getElementById('copyReportBtn');
+    try{
+      await navigator.clipboard.writeText(textEl.value);
+      btn.textContent = '✅ Copiado!';
+    }catch(e){
+      textEl.select();
+      document.execCommand('copy');
+      btn.textContent = '✅ Copiado!';
+    }
+    setTimeout(() => { btn.textContent = '📋 Copiar texto'; }, 2000);
+  });
 
   function renderGoalsList(){
     const list = document.getElementById('goalsList');
@@ -1044,7 +1373,7 @@
         btn.addEventListener('click', async () => {
           goal.trials = goal.trials || [];
           goal.trials.push({ date: new Date().toISOString(), level: level.id });
-          await saveGoals();
+          await saveGoalItem(goal);
           renderGoalsList();
         });
         promptRow.appendChild(btn);
@@ -1085,8 +1414,9 @@
 
     status.textContent = 'Buscando símbolo…';
     const imgId = await fetchPictoId(word);
-    vocab.push({ word, cat, imgId, count:0 });
-    await saveVocab();
+    const newItem = { word, cat, imgId, count:0 };
+    vocab.push(newItem);
+    await saveVocabItem(newItem);
     document.getElementById('newWord').value = '';
     status.textContent = imgId ? `"${word}" adicionado com símbolo.` : `"${word}" adicionado sem símbolo (usará ícone genérico).`;
     renderVocabList();
@@ -1185,7 +1515,7 @@
         try{
           const dataUrl = await compressImage(file);
           item.photo = dataUrl;
-          const ok = await saveVocab();
+          const ok = await saveVocabItem(item);
           if(ok){
             photoStatus.textContent = '✅ Foto salva!';
             photoStatus.style.color = 'var(--c-acoes)';
@@ -1213,7 +1543,7 @@
         removePhotoBtn.style.cssText = 'padding:4px 8px;font-size:12px;';
         removePhotoBtn.addEventListener('click', async () => {
           delete item.photo;
-          await saveVocab();
+          await saveVocabItem(item);
           renderVocabList();
           renderGrid();
           renderFavRow();
@@ -1244,6 +1574,15 @@
 
   init();
 })();
+
+// Registra o service worker (fora de rede fina, funciona em segundo plano)
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => {
+      console.warn('Service worker não pôde ser registrado (ok em ambiente de teste local):', err);
+    });
+  });
+}
 </script>
 </body>
 </html>
