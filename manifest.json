@@ -1,0 +1,14 @@
+{
+  "name": "Minha Voz — Prancha CAA",
+  "short_name": "Minha Voz",
+  "description": "Aplicativo de Comunicação Aumentativa e Alternativa (CAA) com acompanhamento terapêutico.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#faf9f6",
+  "theme_color": "#7c4fd6",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
