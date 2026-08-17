@@ -1374,6 +1374,10 @@
       utter.onend = onEnd;
     }
     utter.onerror = (e) => {
+      // "interrupted" e "canceled" acontecem sempre que uma fala nova corta
+      // a anterior (comportamento normal de speechSynthesis.cancel() logo
+      // abaixo) — não é um erro real, então não precisa alarmar o cuidador.
+      if(e.error === 'interrupted' || e.error === 'canceled') return;
       headerSub.textContent = 'Erro ao falar: ' + (e.error || 'desconhecido');
     };
     speechSynthesis.cancel();
