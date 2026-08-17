@@ -1357,33 +1357,46 @@
     return [...ptVoices].sort((a,b) => scoreVoice(b) - scoreVoice(a))[0];
   }
 
+  // Fila de fala: evita chamar speechSynthesis.cancel() em cima de uma fala
+  // que já está tocando (principal causa de erros "interrupted" aparecerem
+  // pro usuário). Cada novo pedido espera o anterior terminar antes de falar.
+  let speakQueue = Promise.resolve();
+
   function speak(text, chipEl, onEnd){
-    if(!('speechSynthesis' in window)){
-      headerSub.textContent = 'Este navegador não suporta fala.';
-      return;
-    }
-    const utter = new SpeechSynthesisUtterance(text);
-    const voice = bestVoice();
-    if(voice) utter.voice = voice;
-    utter.lang = 'pt-BR';
-    utter.rate = voiceSettings.rate || 0.95;
-    utter.pitch = voiceSettings.pitch || 1.0;
-    utter.volume = 1;
-    if(chipEl){
-      chipEl.classList.add('speaking');
-      utter.onend = () => { chipEl.classList.remove('speaking'); if(onEnd) onEnd(); };
-    }else if(onEnd){
-      utter.onend = onEnd;
-    }
-    utter.onerror = (e) => {
-      // "interrupted" e "canceled" acontecem sempre que uma fala nova corta
-      // a anterior (comportamento normal de speechSynthesis.cancel() logo
-      // abaixo) — não é um erro real, então não precisa alarmar o cuidador.
-      if(e.error === 'interrupted' || e.error === 'canceled') return;
-      headerSub.textContent = 'Erro ao falar: ' + (e.error || 'desconhecido');
-    };
-    speechSynthesis.cancel();
-    speechSynthesis.speak(utter);
+    speakQueue = speakQueue.then(() => new Promise((resolve) => {
+      if(!('speechSynthesis' in window)){
+        headerSub.textContent = 'Este navegador não suporta fala.';
+        resolve();
+        return;
+      }
+      const utter = new SpeechSynthesisUtterance(text);
+      const voice = bestVoice();
+      if(voice) utter.voice = voice;
+      utter.lang = 'pt-BR';
+      utter.rate = voiceSettings.rate || 0.95;
+      utter.pitch = voiceSettings.pitch || 1.0;
+      utter.volume = 1;
+
+      const finish = () => {
+        if(chipEl) chipEl.classList.remove('speaking');
+        if(onEnd) onEnd();
+        resolve();
+      };
+
+      if(chipEl) chipEl.classList.add('speaking');
+      utter.onend = finish;
+      utter.onerror = (e) => {
+        // "interrupted" e "canceled" acontecem sempre que uma fala é cortada
+        // por outra — comportamento normal do speechSynthesis, não é um erro
+        // real, então não precisa alarmar o cuidador com essa mensagem.
+        if(e.error !== 'interrupted' && e.error !== 'canceled'){
+          headerSub.textContent = 'Erro ao falar: ' + (e.error || 'desconhecido');
+        }
+        finish();
+      };
+      speechSynthesis.speak(utter);
+    }));
+    return speakQueue;
   }
 
   // Reforço extra pra palavras de urgência: fala de novo depois de uma pausa curta,
