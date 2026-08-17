@@ -55,6 +55,27 @@
     overflow:hidden;
   }
 
+  /* ---------- TELA DE CIÊNCIA / TRANSPARÊNCIA (primeiro acesso) ---------- */
+  #consentOverlay{
+    position:fixed; inset:0; background:var(--bg); z-index:200;
+    display:none; align-items:center; justify-content:center; padding:20px;
+  }
+  #consentCard{
+    background:#fff; border-radius:var(--radius-lg); box-shadow:var(--shadow-lift);
+    max-width:480px; width:100%; max-height:90vh; overflow-y:auto;
+    padding:28px 26px;
+  }
+  #consentCard .consent-icon{font-size:40px; margin-bottom:6px;}
+  #consentCard h2{margin:0 0 12px; font-size:20px;}
+  #consentCard p{font-size:14px; line-height:1.6; color:var(--ink); margin:0 0 14px;}
+  #consentCard ul{margin:0 0 14px; padding-left:20px; font-size:14px; line-height:1.7; color:var(--ink);}
+  #consentCard li{margin-bottom:4px;}
+  #consentCard .consent-note{font-size:12.5px; color:var(--ink-soft); background:var(--bg); padding:10px 12px; border-radius:10px; margin-bottom:16px;}
+  #consentAcceptBtn{
+    width:100%; border:none; border-radius:12px; padding:14px; font-weight:700; font-size:15px;
+    background:var(--c-nucleo); color:#fff; cursor:pointer; font-family:inherit;
+  }
+
   /* ---------- CABEÇALHO ---------- */
   #appHeader{
     display:flex;
@@ -209,9 +230,7 @@
     will-change:transform, opacity;
     transition:transform 0.2s ease;
   }
-  /* Enquanto o dedo está arrastando, a folha segue o dedo sem atraso (sem transition) */
   #grid.dragging{ transition:none; }
-  /* Efeito de "virar a página" da pasta ao trocar de categoria por toque */
   #grid.page-turn-out-left{ animation:pageTurnOutLeft 0.22s ease forwards; }
   #grid.page-turn-out-right{ animation:pageTurnOutRight 0.22s ease forwards; }
   #grid.page-turn-in-left{ animation:pageTurnInLeft 0.24s ease forwards; }
@@ -231,7 +250,6 @@
     to{ transform:translateX(0) rotateY(0) scale(1); opacity:1; }
   }
 
-  /* Setas laterais fixas, um toque = pula pra próxima/anterior "folha" da pasta */
   .page-arrow{
     position:absolute;
     top:50%;
@@ -287,7 +305,6 @@
   .symbol-btn .fallback-emoji{font-size:76px;margin-bottom:10px;}
   .symbol-btn span{font-size:20px;font-weight:700;text-align:center;line-height:1.2;}
 
-  /* Fotos reais preenchem o card inteiro, tipo um cartão de foto de verdade */
   .symbol-btn.has-photo{ padding:0; align-items:stretch; }
   .symbol-btn.has-photo img{
     position:absolute; inset:0; width:100%; height:100%;
@@ -387,9 +404,36 @@
   .goal-progress-fill{height:100%; background:#2e8b46;}
   .goal-progress-label{font-size:12px; color:var(--ink-soft); margin-top:4px;}
   .goal-delete{background:none; border:none; color:#c0392b; font-size:12px; cursor:pointer; float:right;}
+
+  /* ---------- TELA DE CARREGANDO LOGIN ---------- */
+  #authLoadingMsg{
+    position:fixed; inset:0; background:var(--bg); z-index:150;
+    display:flex; align-items:center; justify-content:center;
+    font-size:15px; color:var(--ink-soft);
+  }
 </style>
 </head>
 <body>
+
+<div id="authLoadingMsg">Conectando com segurança…</div>
+
+<!-- ---------- TELA DE CIÊNCIA / TRANSPARÊNCIA ---------- -->
+<div id="consentOverlay">
+  <div id="consentCard">
+    <div class="consent-icon">💬🔒</div>
+    <h2>Sobre o Minha Voz</h2>
+    <p>Este aplicativo foi criado especialmente para o Bê, como ferramenta de comunicação (CAA). Antes de continuar, veja o que você precisa saber:</p>
+    <ul>
+      <li><strong>O que o app guarda:</strong> palavras e símbolos usados, fotos reais adicionadas pelo cuidador, e o progresso das metas terapêuticas.</li>
+      <li><strong>Onde fica guardado:</strong> em um banco de dados privado (Firebase/Google), protegido por login e regras de acesso — não é público.</li>
+      <li><strong>Quem acessa:</strong> só quem tem o link do app e, para editar vocabulário/metas, o PIN do cuidador.</li>
+      <li><strong>Para que serve:</strong> exclusivamente para apoiar a comunicação e o acompanhamento terapêutico do Bê. Os dados não são vendidos, compartilhados ou usados para nenhuma outra finalidade.</li>
+      <li><strong>Exclusão:</strong> qualquer palavra, foto ou meta pode ser apagada a qualquer momento pelo painel do cuidador.</li>
+    </ul>
+    <div class="consent-note">Este aviso aparece porque é a primeira vez que este dispositivo acessa o app.</div>
+    <button id="consentAcceptBtn">Entendi, continuar</button>
+  </div>
+</div>
 
 <div id="appHeader">
   <div class="logo">💬</div>
@@ -529,6 +573,9 @@
         <label for="connStatus" style="margin-top:18px;">Conexão</label>
         <div id="connStatus" style="font-size:14px;font-weight:600;"></div>
 
+        <label for="authStatus">Login de segurança</label>
+        <div id="authStatus" style="font-size:14px;font-weight:600;"></div>
+
         <label for="newPinInput">Trocar PIN do cuidador</label>
         <input type="password" id="newPinInput" inputmode="numeric" maxlength="4" placeholder="Novo PIN de 4 dígitos">
         <div class="row">
@@ -552,6 +599,12 @@
     getFirestore, collection, doc, getDocs, setDoc, deleteDoc,
     enableIndexedDbPersistence
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import {
+    getAuth, signInAnonymously, onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import {
+    initializeAppCheck, ReCaptchaV3Provider
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCBxYwyTieXWmzC_yGq0Abyr5xXZoj-4ts",
@@ -565,32 +618,89 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  // ---------- App Check (proteção contra bots/uso indevido da API) ----------
+  // IMPORTANTE: troque 'COLOQUE_SUA_CHAVE_RECAPTCHA_AQUI' pela chave de site que você
+  // vai gerar no passo 4 do guia (Firebase Console → App Check → reCAPTCHA v3).
+  // Enquanto não trocar, o App Check fica inativo e o resto do app funciona normal.
+  const RECAPTCHA_SITE_KEY = 'COLOQUE_SUA_CHAVE_RECAPTCHA_AQUI';
+  if(RECAPTCHA_SITE_KEY && RECAPTCHA_SITE_KEY !== 'COLOQUE_SUA_CHAVE_RECAPTCHA_AQUI'){
+    try{
+      initializeAppCheck(app, {
+        provider: new ReCaptchaV3Provider(RECAPTCHA_SITE_KEY),
+        isTokenAutoRefreshEnabled: true
+      });
+    }catch(e){
+      console.warn('App Check não pôde ser iniciado:', e);
+    }
+  }
 
   // Ativa cache offline: o app funciona (lê e escreve) sem internet,
   // e sincroniza sozinho com o Firebase assim que a conexão voltar.
   try{
     await enableIndexedDbPersistence(db);
   }catch(e){
-    // 'failed-precondition' = já aberto em outra aba; 'unimplemented' = navegador não suporta.
-    // Em ambos os casos o app continua funcionando, só sem cache offline completo.
     console.warn('Persistência offline não pôde ser ativada:', e.code || e.message);
   }
 
-  // Coleções exclusivas deste app, separadas do resto do projeto da assistência
+  // ---------- Login anônimo (obrigatório pelas novas regras do Firestore) ----------
+  // O app continua sem nenhuma tela de "login" visível pra criança — isso acontece
+  // por trás, automaticamente, assim que a página abre.
+  function garantirLoginAnonimo(){
+    return new Promise((resolve, reject) => {
+      onAuthStateChanged(auth, (user) => {
+        if(user){
+          resolve(user);
+        }else{
+          signInAnonymously(auth).catch((err) => {
+            console.error('Falha no login anônimo:', err);
+            reject(err);
+          });
+        }
+      });
+    });
+  }
+
   const VOCAB_COLLECTION = 'minha_voz_vocabulario';
   const GOALS_COLLECTION = 'minha_voz_metas';
 
-  // Expõe pro script principal (não-module) usar
   window.__firebase = {
     db, collection, doc, getDocs, setDoc, deleteDoc,
-    VOCAB_COLLECTION, GOALS_COLLECTION
+    VOCAB_COLLECTION, GOALS_COLLECTION, auth
   };
+
+  const authLoadingMsg = document.getElementById('authLoadingMsg');
+  try{
+    await garantirLoginAnonimo();
+    window.__firebase.authOk = true;
+  }catch(e){
+    window.__firebase.authOk = false;
+    authLoadingMsg.textContent = 'Não foi possível conectar com segurança. Verifique sua internet e recarregue a página.';
+    // não esconde a tela de carregando — evita usar o app sem autenticação válida
+    throw e;
+  }
+
+  authLoadingMsg.style.display = 'none';
   window.__firebaseReady = true;
   window.dispatchEvent(new Event('firebase-ready'));
 </script>
 
 <script>
 (function(){
+
+  // ---------- Tela de ciência / transparência (primeiro acesso) ----------
+  const CONSENT_KEY = 'caa_consent_v1';
+  const consentOverlay = document.getElementById('consentOverlay');
+  let consentGiven = false;
+  try{ consentGiven = localStorage.getItem(CONSENT_KEY) === '1'; }catch(e){ /* ok */ }
+  if(!consentGiven){
+    consentOverlay.style.display = 'flex';
+  }
+  document.getElementById('consentAcceptBtn').addEventListener('click', () => {
+    try{ localStorage.setItem(CONSENT_KEY, '1'); }catch(e){ /* ok */ }
+    consentOverlay.style.display = 'none';
+  });
 
   const CATEGORIES = [
     { id:'nucleo',       label:'Núcleo',       icon:'⭐', color:'var(--c-nucleo)',       soft:'var(--c-nucleo-soft)' },
@@ -639,8 +749,6 @@
   const GOALS_KEY = 'caa_goals_v1';
   const VOICE_KEY = 'caa_voice_v1';
   const PIN_HASH_KEY = 'caa_pin_hash';
-  // Hash SHA-256 do PIN padrão "1234" — o PIN em si não fica exposto no código.
-  // Quem trocar o PIN pelo painel (aba Diagnóstico) grava um novo hash no lugar deste.
   const DEFAULT_PIN_HASH = '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4';
 
   async function sha256Hex(text){
@@ -688,14 +796,12 @@
     return `https://static.arasaac.org/pictograms/${id}/${id}_300.png`;
   }
 
-  // Foto real do usuário tem prioridade sobre o pictograma genérico
   function symbolImageSrc(item){
     if(item.photo) return item.photo;
     if(item.imgId) return pictoUrl(item.imgId);
     return null;
   }
 
-  // Espera o módulo do Firebase terminar de carregar (é assíncrono)
   function waitForFirebase(){
     return new Promise(resolve => {
       if(window.__firebaseReady) return resolve(window.__firebase);
@@ -731,8 +837,6 @@
     }
   }
 
-  // Grava só UM item alterado — usar sempre que só uma palavra mudou
-  // (evita reescrever o vocabulário inteiro no Firestore a cada toque)
   async function saveVocabItem(item){
     try{
       const fb = await waitForFirebase();
@@ -784,7 +888,6 @@
     }catch(e){ console.error('Falha ao salvar metas no Firestore', e); }
   }
 
-  // Grava só UMA meta alterada — usar sempre que só uma meta mudou
   async function saveGoalItem(goal){
     try{
       const fb = await waitForFirebase();
@@ -891,17 +994,13 @@
     });
   }
 
-  // ---------- Navegação por toque na tela entre categorias (feito como "folhas de pasta") ----------
-  // A folha acompanha o dedo em tempo real durante o arrasto (feedback visual imediato,
-  // importante pra criança perceber na hora que o toque "pegou"), e o limite pra virar
-  // a página é bem baixo — um arrasto curto ou até um "flick" rápido já é suficiente.
   const gridViewport = document.getElementById('gridViewport');
   const prevPageBtn = document.getElementById('prevPageBtn');
   const nextPageBtn = document.getElementById('nextPageBtn');
 
-  const SWIPE_MIN_DISTANCE = 28;    // px — bem curto, fácil de atingir
-  const SWIPE_MIN_VELOCITY = 0.25;  // px/ms — um toque rápido também conta, mesmo com pouco percurso
-  const DIRECTION_LOCK_PX = 10;     // px de movimento pra decidir se é arrasto horizontal ou rolagem vertical
+  const SWIPE_MIN_DISTANCE = 28;
+  const SWIPE_MIN_VELOCITY = 0.25;
+  const DIRECTION_LOCK_PX = 10;
 
   let dragStartX = 0, dragStartY = 0, dragStartTime = 0;
   let dragCurrentX = 0;
@@ -928,14 +1027,13 @@
         dragLockedHorizontal = true;
         grid.classList.add('dragging');
       }else if(Math.abs(dy) > DIRECTION_LOCK_PX){
-        dragging = false; // movimento vertical: deixa a grade rolar normalmente
+        dragging = false;
         return false;
       }
     }
     if(dragLockedHorizontal){
       dragCurrentX = x;
       const idx = currentCatIndex();
-      // resistência nas pontas: já é a primeira/última categoria, arrasta "com peso"
       let resisted = dx;
       if((idx === 0 && dx > 0) || (idx === CATEGORIES.length - 1 && dx < 0)) resisted = dx * 0.35;
       grid.style.transform = `translateX(${resisted}px)`;
@@ -967,7 +1065,6 @@
     }
   }
 
-  // direction: 'next' (esquerda→direita do dedo = próxima categoria) ou 'prev'
   function goToCategory(catIdOrDirection, viaGesture, gestureDirection){
     let targetId = catIdOrDirection;
     let animOutClass, animInClass;
@@ -977,7 +1074,6 @@
     }else if(gestureDirection === 'prev'){
       animOutClass = 'page-turn-out-right'; animInClass = 'page-turn-in-right';
     }else{
-      // Veio de um toque direto na barra de categorias: anima na direção do índice
       const fromIdx = currentCatIndex();
       const toIdx = CATEGORIES.findIndex(c => c.id === targetId);
       if(toIdx > fromIdx){ animOutClass = 'page-turn-out-left'; animInClass = 'page-turn-in-left'; }
@@ -1025,7 +1121,7 @@
   gridViewport.addEventListener('touchmove', (e) => {
     if(e.touches.length !== 1) return;
     const handled = onDragMove(e.touches[0].clientX, e.touches[0].clientY);
-    if(handled) e.preventDefault(); // segura a rolagem da página enquanto vira a folha
+    if(handled) e.preventDefault();
   }, { passive:false });
 
   gridViewport.addEventListener('touchend', onDragEnd);
@@ -1035,12 +1131,10 @@
     grid.style.transform = '';
   });
 
-  // Também funciona arrastando com o mouse, útil pra testar em computador
   gridViewport.addEventListener('mousedown', (e) => { onDragStart(e.clientX, e.clientY); });
   window.addEventListener('mousemove', (e) => { if(dragging) onDragMove(e.clientX, e.clientY); });
   window.addEventListener('mouseup', onDragEnd);
 
-  // Dá uma nota de qualidade a cada voz em pt para escolher a melhor por padrão.
   function scoreVoice(v){
     const name = (v.name || '').toLowerCase();
     let score = 0;
@@ -1152,6 +1246,12 @@
     const el = document.getElementById('connStatus');
     if(!el) return;
     el.textContent = navigator.onLine ? '🟢 Online' : '🟠 Offline (mudanças serão sincronizadas quando voltar a internet)';
+    const authEl = document.getElementById('authStatus');
+    if(authEl){
+      const fb = window.__firebase;
+      const uid = fb && fb.auth && fb.auth.currentUser ? fb.auth.currentUser.uid : null;
+      authEl.textContent = uid ? ('🟢 Autenticado (login anônimo ativo)') : '🟠 Ainda conectando…';
+    }
   }
   window.addEventListener('online', updateConnStatus);
   window.addEventListener('offline', updateConnStatus);
@@ -1206,13 +1306,12 @@
     renderSentence();
   });
 
-  // ---------- Modo cuidador ----------
   const overlay = document.getElementById('caregiverOverlay');
   const pinScreen = document.getElementById('pinScreen');
   const editScreen = document.getElementById('editScreen');
   const pinInput = document.getElementById('pinInput');
   const pinError = document.getElementById('pinError');
-  let pinAction = 'open'; // 'open' = abrir painel | 'unlock' = só destravar a tela
+  let pinAction = 'open';
 
   document.getElementById('settingsBtn').addEventListener('click', () => {
     overlay.style.display = 'flex';
@@ -1256,10 +1355,8 @@
   }
   document.getElementById('closeCaregiver').addEventListener('click', closeCaregiverPanel);
   document.getElementById('panelCloseX').addEventListener('click', closeCaregiverPanel);
-  // Fecha também clicando fora do painel (no fundo escurecido)
   overlay.addEventListener('click', (e) => { if(e.target === overlay) closeCaregiverPanel(); });
 
-  // ---------- Modo travado (kiosk) ----------
   const LOCK_KEY = 'caa_lock_mode';
   let lockModeActive = false;
   try{ lockModeActive = localStorage.getItem(LOCK_KEY) === '1'; }catch(e){ /* ok */ }
@@ -1298,7 +1395,6 @@
   }
 
   lockBtn.addEventListener('click', () => {
-    // Abre a tela de PIN; ao confirmar corretamente, desativa a trava
     overlay.style.display = 'flex';
     pinScreen.style.display = 'flex';
     editScreen.style.display = 'none';
@@ -1319,7 +1415,6 @@
     pinInput.focus();
   });
 
-  // Se a criança sair da tela cheia (botão voltar/gesto do Android), mostra a tela de bloqueio
   document.addEventListener('fullscreenchange', () => {
     if(lockModeActive && !document.fullscreenElement){
       lockOverlay.style.display = 'flex';
@@ -1328,12 +1423,10 @@
     }
   });
 
-  // Evita menu de contexto (toque longo) chamativo durante o uso travado
   document.addEventListener('contextmenu', (e) => { if(lockModeActive) e.preventDefault(); });
 
   updateLockUI();
   if(lockModeActive){
-    // Reabre travado se a página recarregar com o modo já ativado antes
     window.addEventListener('load', () => { lockOverlay.style.display = 'flex'; });
   }
 
@@ -1359,7 +1452,6 @@
     });
   }
 
-  // ---------- Abas do painel (corrigido: sempre esconde todas, mostra só 1) ----------
   function showTab(tab){
     const tabs = {
       vocab:  { btn:'tabVocabBtn',  panel:'vocabTab'  },
@@ -1382,7 +1474,6 @@
   document.getElementById('tabVoiceBtn').addEventListener('click', () => showTab('voice'));
   document.getElementById('tabDiagBtn').addEventListener('click', () => showTab('diag'));
 
-  // ---------- Aba de Voz ----------
   function populateVoiceSelect(){
     const sel = document.getElementById('voiceSelect');
     const status = document.getElementById('voiceStatus');
@@ -1437,7 +1528,6 @@
     speak('Oi! Essa é a minha voz agora.');
   });
 
-  // ---------- Metas terapêuticas ----------
   document.getElementById('addGoalBtn').addEventListener('click', async () => {
     const title = document.getElementById('goalTitle').value.trim();
     const cat = document.getElementById('goalCat').value;
@@ -1457,7 +1547,6 @@
     { id:'sem_resposta', label:'Sem resposta' },
   ];
 
-  // ---------- Relatório de metas (texto pronto pra levar pra fono) ----------
   function formatDate(iso){
     try{ return new Date(iso).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' }); }
     catch(e){ return iso; }
@@ -1500,7 +1589,6 @@
         lines.push(`   Primeira tentativa: ${formatDate(first.date)}`);
         lines.push(`   Última tentativa: ${formatDate(last.date)}`);
 
-        // Tendência: compara a primeira metade com a segunda metade das tentativas
         if(trials.length >= 4){
           const mid = Math.floor(trials.length / 2);
           const firstHalf = trials.slice(0, mid);
@@ -1624,7 +1712,6 @@
     renderVocabList();
   });
 
-  // Comprime a foto antes de guardar, pra não pesar no banco de dados
   function compressImage(file, maxSize, quality){
     maxSize = maxSize || 480; quality = quality || 0.65;
     return new Promise((resolve, reject) => {
@@ -1695,7 +1782,6 @@
       row.appendChild(thumb);
       row.appendChild(label);
 
-      // Botão de foto (tirar ou escolher da galeria)
       const photoBtn = document.createElement('label');
       photoBtn.textContent = '📷';
       photoBtn.title = 'Adicionar foto real (câmera ou galeria)';
@@ -1703,7 +1789,6 @@
       const photoInput = document.createElement('input');
       photoInput.type = 'file';
       photoInput.accept = 'image/*';
-      // Sem "capture": deixa o navegador oferecer câmera E galeria pra escolher
       photoInput.style.display = 'none';
 
       const photoStatus = document.createElement('div');
@@ -1774,10 +1859,12 @@
     });
   }
 
-  init();
+  window.addEventListener('firebase-ready', () => {
+    init();
+  });
+  if(window.__firebaseReady){ init(); }
 })();
 
-// Registra o service worker (fora de rede fina, funciona em segundo plano)
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(err => {
