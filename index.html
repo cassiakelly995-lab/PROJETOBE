@@ -179,7 +179,7 @@
   .bar-btn:focus-visible{outline:3px solid var(--focus); outline-offset:2px;}
   #speakBtn{background:var(--c-acoes); color:#fff;}
   #speakBtn:hover{filter:brightness(1.06);}
-  #clearBtn{background:var(--bg-deep); color:var(--ink-soft);}
+  #clearBtn{background:var(--c-urgente-soft); color:var(--c-urgente); border:2px solid var(--c-urgente);}
   #settingsBtn{background:transparent; color:#b9b4aa; font-size:20px; width:52px; padding:0;}
 
   /* ---------- MODO TRAVADO (KIOSK) ---------- */
@@ -276,8 +276,8 @@
     height:100%;
     display:grid;
     grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));
-    gap:16px;
-    padding:6px 16px 24px;
+    gap:22px;
+    padding:8px 16px 24px;
     overflow-y:auto;
     align-content:start;
     will-change:transform, opacity;
@@ -349,6 +349,7 @@
     box-shadow:0 0 0 4px var(--focus), var(--shadow-lift);
     animation:pop 0.35s ease;
   }
+  .symbol-btn.cooldown{ pointer-events:none; opacity:0.75; }
   @keyframes pop{
     0%{transform:scale(1);}
     40%{transform:scale(1.08);}
@@ -468,6 +469,7 @@
   #vocabSearch{margin-top:14px;}
   #vocabList{margin-top:12px; border-top:1px solid var(--border); padding-top:10px;}
   .vocab-item{display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:6px; padding:8px 0; border-bottom:1px solid #f0f0f0; font-size:14px;}
+  .vocab-item.is-inactive{opacity:0.5;}
   #pinScreen{display:flex; flex-direction:column; gap:10px; align-items:center; padding:24px;}
   #pinScreen input{text-align:center; font-size:24px; letter-spacing:8px;}
   #pinError{color:#c0392b; font-size:13px; min-height:16px;}
@@ -548,7 +550,7 @@
 <div id="sentenceBar">
   <div id="sentenceStrip"><span class="sentence-empty">Toque nos símbolos para formar uma frase</span></div>
   <button class="bar-btn" id="speakBtn" title="Falar frase">🔊 Falar</button>
-  <button class="bar-btn" id="clearBtn" title="Limpar frase">🗑️</button>
+  <button class="bar-btn" id="clearBtn" title="Apagar frase">⌫ Apagar</button>
   <button class="bar-btn" id="settingsBtn" title="Modo cuidador">⚙️</button>
   <button id="lockBtn" title="Tela travada — toque para desbloquear">🔒</button>
 </div>
@@ -616,6 +618,12 @@
         <button class="btn-secondary" id="resetFavBtn" style="padding:8px 12px;font-size:13px;">Zerar</button>
       </div>
 
+      <div class="toggle-row" style="background:var(--c-nucleo-soft); padding:10px 12px; border-radius:12px;">
+        <span>👁️ Mostrar palavras ocultas na lista</span>
+        <input type="checkbox" id="showInactiveToggle" style="width:22px;height:22px;">
+      </div>
+      <p style="font-size:12px;color:var(--ink-soft);margin:6px 0 0;">Dica: comece com poucas palavras visíveis pro Bê (as que ele já usa) e vá ativando mais aos poucos, ao invés de apagar as que ele ainda não domina.</p>
+
       <input type="text" id="vocabSearch" placeholder="🔎 Buscar palavra no vocabulário…">
       <div id="vocabCount" style="font-size:12px;color:var(--ink-soft);margin-top:6px;"></div>
       <div id="vocabList"></div>
@@ -674,6 +682,17 @@
           <button class="btn-secondary" id="testFirebaseBtn" style="flex:1;">🔥 Testar Firebase</button>
         </div>
         <div id="diagStatus" style="font-size:13px;color:var(--ink-soft);margin-top:8px; min-height:18px;"></div>
+
+        <div class="toggle-row" style="background:var(--c-nucleo-soft); padding:10px 12px; border-radius:12px;">
+          <span>📶 Testar modo offline</span>
+          <button class="btn-secondary" id="testOfflineBtn" style="padding:8px 12px;font-size:13px;">Ver instruções</button>
+        </div>
+        <div id="offlineInstructions" style="display:none; font-size:12.5px; color:var(--ink-soft); margin-top:8px; background:var(--bg); padding:10px 12px; border-radius:10px; line-height:1.6;">
+          1. Deixe o app aberto e usado ao menos uma vez com internet (pra guardar tudo no cache).<br>
+          2. Ative o modo avião no tablet.<br>
+          3. Feche e abra o app de novo — os símbolos e a fala devem continuar funcionando.<br>
+          4. Toque em algumas palavras: elas ficam guardadas e sincronizam sozinhas quando a internet voltar.
+        </div>
 
         <label for="connStatus" style="margin-top:18px;">Conexão</label>
         <div id="connStatus" style="font-size:14px;font-weight:600;"></div>
@@ -818,6 +837,11 @@
     { id:'social',       label:'Social',       icon:'👋', color:'var(--c-social)',       soft:'var(--c-social-soft)' },
   ];
 
+  // Palavras marcadas como "starter" (active:true) — as demais entram OCULTAS
+  // por padrão, pra tela inicial ficar enxuta. O cuidador ativa mais aos poucos
+  // pelo painel, sem nunca perder a palavra (ela só fica escondida, não apagada).
+  const STARTER_WORDS = ['sim','não','quero','ajuda','mais','banheiro','parar','eu','você','mamãe','papai'];
+
   const DEFAULT_VOCAB = [
     { word:'sim', cat:'nucleo' }, { word:'não', cat:'nucleo' },
     { word:'quero', cat:'nucleo' }, { word:'ajuda', cat:'nucleo' },
@@ -866,6 +890,13 @@
   const PIN_HASH_KEY = 'caa_pin_hash';
   const DEFAULT_PIN_HASH = '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4';
 
+  // ---------- Proteção contra toque acidental ----------
+  // Impede que um novo símbolo seja disparado logo em seguida de outro
+  // (ex: dedo escorregando, toque duplo sem querer). O botão fica "esperando"
+  // por um instante curto antes de aceitar o próximo toque.
+  const SELECT_COOLDOWN_MS = 550;
+  let lastSelectTime = 0;
+
   async function sha256Hex(text){
     const enc = new TextEncoder().encode(text);
     const buf = await crypto.subtle.digest('SHA-256', enc);
@@ -890,6 +921,7 @@
   let activeCat = 'nucleo';
   let sentence = [];
   let voiceSettings = { voiceURI: null, rate: 0.95, pitch: 1.0 };
+  let showInactiveInList = false;
 
   const grid = document.getElementById('grid');
   const categoryBar = document.getElementById('categoryBar');
@@ -898,6 +930,12 @@
   const coreBar = document.getElementById('coreBar');
   const headerSub = document.getElementById('headerSub');
   const urgentBanner = document.getElementById('urgentBanner');
+
+  // Trata itens antigos sem o campo "active" como visíveis (compatibilidade
+  // com o vocabulário que já estava salvo no Firebase antes dessa mudança).
+  function isWordActive(item){
+    return item.active !== false;
+  }
 
   async function fetchPictoId(word){
     try{
@@ -1024,12 +1062,19 @@
     if(saved && saved.length){
       vocab = saved.map(v => ({ count:0, ...v }));
     }else{
-      vocab = DEFAULT_VOCAB.map(v => ({...v, imgId:null, count:0}));
+      vocab = DEFAULT_VOCAB.map(v => ({
+        ...v,
+        imgId:null,
+        count:0,
+        // Começa só com o "kit inicial" visível pro Bê; o resto fica oculto
+        // até o cuidador decidir liberar, pela aba de Vocabulário.
+        active: STARTER_WORDS.includes(v.word)
+      }));
       await Promise.all(vocab.map(async item => { item.imgId = await fetchPictoId(item.word); }));
       await saveVocab();
     }
 
-    headerSub.textContent = vocab.length + ' símbolos';
+    headerSub.textContent = vocab.filter(isWordActive).length + ' símbolos ativos';
     goals = await loadGoals();
     const savedVoice = await loadVoiceSettings();
     if(savedVoice) voiceSettings = { ...voiceSettings, ...savedVoice };
@@ -1061,7 +1106,7 @@
   // "mais" e as de urgência não exigem mais trocar de página pra serem alcançadas.
   function renderCoreBar(){
     coreBar.innerHTML = '';
-    const coreWords = vocab.filter(v => v.cat === 'nucleo');
+    const coreWords = vocab.filter(v => v.cat === 'nucleo' && isWordActive(v));
     if(coreWords.length === 0){ coreBar.style.display = 'none'; return; }
     coreBar.style.display = 'flex';
 
@@ -1086,7 +1131,7 @@
   }
 
   function renderFavRow(){
-    const favs = [...vocab].filter(v => v.count > 0).sort((a,b) => b.count - a.count).slice(0,8);
+    const favs = [...vocab].filter(v => v.count > 0 && isWordActive(v)).sort((a,b) => b.count - a.count).slice(0,8);
     favRow.innerHTML = '';
     if(favs.length === 0){ favRow.style.display = 'none'; return; }
     favRow.style.display = 'flex';
@@ -1108,9 +1153,9 @@
 
   function renderGrid(){
     grid.innerHTML = '';
-    const items = vocab.filter(v => v.cat === activeCat);
+    const items = vocab.filter(v => v.cat === activeCat && isWordActive(v));
     if(items.length === 0){
-      grid.innerHTML = '<div id="loadingMsg">Nenhum símbolo nesta categoria ainda.</div>';
+      grid.innerHTML = '<div id="loadingMsg">Nenhum símbolo ativo nesta categoria ainda. Ative palavras pelo modo cuidador (⚙️).</div>';
       return;
     }
     const info = catInfo(activeCat);
@@ -1383,6 +1428,11 @@
     }
   });
 
+  document.getElementById('testOfflineBtn').addEventListener('click', () => {
+    const box = document.getElementById('offlineInstructions');
+    box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  });
+
   document.getElementById('changePinBtn').addEventListener('click', async () => {
     const statusEl = document.getElementById('pinChangeStatus');
     const newPin = document.getElementById('newPinInput').value.trim();
@@ -1418,9 +1468,17 @@
   window.addEventListener('offline', updateConnStatus);
 
   async function selectSymbol(item, sourceEl){
+    // Proteção contra toque acidental: ignora seleção se veio logo depois da anterior.
+    const now = Date.now();
+    if(now - lastSelectTime < SELECT_COOLDOWN_MS){
+      return;
+    }
+    lastSelectTime = now;
+
     if(sourceEl){
-      sourceEl.classList.add('speaking');
+      sourceEl.classList.add('speaking', 'cooldown');
       setTimeout(() => sourceEl.classList.remove('speaking'), 500);
+      setTimeout(() => sourceEl.classList.remove('cooldown'), SELECT_COOLDOWN_MS);
     }
     speak(item.word);
     if(isUrgentWord(item.word)) triggerUrgentReinforcement(item.word);
@@ -1532,7 +1590,7 @@
     renderGrid();
     renderCoreBar();
     renderFavRow();
-    headerSub.textContent = vocab.length + ' símbolos';
+    headerSub.textContent = vocab.filter(isWordActive).length + ' símbolos ativos';
   }
   document.getElementById('closeCaregiver').addEventListener('click', closeCaregiverPanel);
   document.getElementById('panelCloseX').addEventListener('click', closeCaregiverPanel);
@@ -1614,6 +1672,11 @@
   document.getElementById('resetFavBtn').addEventListener('click', async () => {
     vocab.forEach(v => v.count = 0);
     await saveVocab();
+    renderVocabList();
+  });
+
+  document.getElementById('showInactiveToggle').addEventListener('change', (e) => {
+    showInactiveInList = e.target.checked;
     renderVocabList();
   });
 
@@ -1900,7 +1963,9 @@
       document.getElementById('newWord').value = '';
       status.textContent = `"${word}" já existia — categoria e símbolo atualizados.`;
     }else{
-      const newItem = { word, cat, imgId, count:0 };
+      // Palavra nova entra ATIVA por padrão (quem está adicionando é o cuidador,
+      // então já é uma escolha deliberada de vocabulário funcional pro Bê).
+      const newItem = { word, cat, imgId, count:0, active:true };
       vocab.push(newItem);
       await saveVocabItem(newItem);
       document.getElementById('newWord').value = '';
@@ -1945,13 +2010,15 @@
   function renderVocabList(){
     const list = document.getElementById('vocabList');
     const countLabel = document.getElementById('vocabCount');
+    let base = showInactiveInList ? vocab : vocab.filter(isWordActive);
     const filtered = vocabFilter
-      ? vocab.filter(v => v.word.toLowerCase().includes(vocabFilter))
-      : vocab;
+      ? base.filter(v => v.word.toLowerCase().includes(vocabFilter))
+      : base;
 
+    const activeTotal = vocab.filter(isWordActive).length;
     countLabel.textContent = vocabFilter
-      ? `${filtered.length} resultado(s) de ${vocab.length} palavra(s)`
-      : `${vocab.length} palavra(s) no total`;
+      ? `${filtered.length} resultado(s) de ${base.length} palavra(s) exibida(s)`
+      : `${activeTotal} palavra(s) ativa(s) de ${vocab.length} no total`;
 
     list.innerHTML = '';
     if(filtered.length === 0){
@@ -1962,7 +2029,7 @@
     filtered.forEach((item) => {
       const idx = vocab.indexOf(item);
       const row = document.createElement('div');
-      row.className = 'vocab-item';
+      row.className = 'vocab-item' + (isWordActive(item) ? '' : ' is-inactive');
       row.style.flexWrap = 'wrap';
       const catLabel = catInfo(item.cat).label;
 
@@ -1978,10 +2045,26 @@
 
       const label = document.createElement('span');
       label.style.flex = '1';
-      label.innerHTML = `${escapeHtml(item.word)} <small style="color:var(--ink-soft);">(${escapeHtml(catLabel)} · usado ${item.count||0}x${item.photo ? ' · 📷 foto própria' : ''})</small>`;
+      label.innerHTML = `${escapeHtml(item.word)} <small style="color:var(--ink-soft);">(${escapeHtml(catLabel)} · usado ${item.count||0}x${item.photo ? ' · 📷 foto própria' : ''}${isWordActive(item) ? '' : ' · oculto'})</small>`;
 
       row.appendChild(thumb);
       row.appendChild(label);
+
+      const toggleBtn = document.createElement('button');
+      toggleBtn.textContent = isWordActive(item) ? '👁️ Ativo' : '🙈 Oculto';
+      toggleBtn.className = 'btn-secondary';
+      toggleBtn.style.cssText = 'padding:4px 8px;font-size:12px;';
+      toggleBtn.title = isWordActive(item) ? 'Ocultar da tela do Bê (sem apagar)' : 'Mostrar na tela do Bê';
+      toggleBtn.addEventListener('click', async () => {
+        item.active = !isWordActive(item);
+        await saveVocabItem(item);
+        renderVocabList();
+        renderGrid();
+        renderCoreBar();
+        renderFavRow();
+        headerSub.textContent = vocab.filter(isWordActive).length + ' símbolos ativos';
+      });
+      row.appendChild(toggleBtn);
 
       const photoBtn = document.createElement('label');
       photoBtn.textContent = '📷';
@@ -2046,7 +2129,7 @@
       delBtn.className = 'btn-danger';
       delBtn.style.padding = '4px 10px'; delBtn.style.fontSize = '12px';
       delBtn.addEventListener('click', async () => {
-        const confirmed = confirm(`Remover "${item.word}" do vocabulário? Isso apaga também a foto, se tiver.`);
+        const confirmed = confirm(`Remover "${item.word}" do vocabulário? Isso apaga também a foto, se tiver. Se preferir só esconder sem apagar, use o botão "Ativo/Oculto".`);
         if(!confirmed) return;
         try{
           const fb = await waitForFirebase();
