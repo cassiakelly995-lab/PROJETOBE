@@ -38,6 +38,8 @@
     --c-descritivos-soft:#e5eefb;
     --c-social:#c23e82;
     --c-social-soft:#fae4f0;
+    --c-urgente:#c0392b;
+    --c-urgente-soft:#fbe2df;
   }
 
   @media (prefers-reduced-motion: reduce){
@@ -115,6 +117,7 @@
     padding:4px;
   }
   .sentence-chip{
+    position:relative;
     display:flex;
     flex-direction:column;
     align-items:center;
@@ -139,6 +142,25 @@
   .sentence-chip img{width:46px;height:46px;object-fit:contain;}
   .sentence-chip span{font-size:11px;text-align:center;line-height:1.1;margin-top:2px;}
   .sentence-empty{color:#999;font-size:14px;padding-left:8px;}
+
+  /* Botão de remover só aquele item da frase, sem apagar tudo */
+  .sentence-chip .chip-remove{
+    position:absolute;
+    top:-8px; right:-8px;
+    width:26px; height:26px;
+    border-radius:50%;
+    border:2px solid #fff;
+    background:var(--c-urgente);
+    color:#fff;
+    font-size:14px;
+    font-weight:700;
+    line-height:1;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    box-shadow:var(--shadow-soft);
+    z-index:2;
+  }
+  .sentence-chip .chip-remove:active{transform:scale(0.9);}
 
   .bar-btn{
     border:none;
@@ -176,6 +198,36 @@
     border:none; border-radius:12px; padding:14px 22px; font-weight:700; font-size:15px;
     background:var(--c-nucleo); color:#fff; cursor:pointer; font-family:inherit;
   }
+
+  /* ---------- BARRA FIXA DE NÚCLEO (sempre visível, em qualquer categoria) ---------- */
+  #coreBar{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:8px 16px 0;
+    overflow-x:auto;
+  }
+  #coreBar .core-label{
+    flex-shrink:0;
+    font-size:11px;
+    font-weight:700;
+    color:var(--c-nucleo);
+    background:var(--c-nucleo-soft);
+    padding:6px 10px;
+    border-radius:999px;
+    white-space:nowrap;
+  }
+  #coreBar .core-chip{
+    flex-shrink:0;
+    display:flex; align-items:center; gap:6px;
+    background:#fff; border:2px solid var(--c-nucleo);
+    border-radius:999px; padding:7px 14px 7px 8px; cursor:pointer;
+    font-size:14px; font-weight:700; color:var(--c-nucleo);
+    font-family:inherit;
+  }
+  #coreBar .core-chip:active{transform:scale(0.95);}
+  #coreBar .core-chip img{width:28px;height:28px;object-fit:contain;}
+  #coreBar .core-chip .fallback-emoji{font-size:18px;}
 
   /* ---------- FAVORITOS ---------- */
   #favRow{
@@ -318,6 +370,55 @@
     text-shadow:0 1px 3px rgba(0,0,0,0.5);
   }
 
+  /* Símbolos de urgência (ajuda, banheiro, parar, com dor) ganham um selo visual extra,
+     além da fala repetida e da vibração — pra chamar mais atenção de quem está perto */
+  .symbol-btn.is-urgent{
+    border-color:var(--c-urgente);
+  }
+  .symbol-btn.is-urgent::after{
+    content:'❗';
+    position:absolute;
+    top:8px; right:8px;
+    font-size:18px;
+    z-index:2;
+  }
+  .symbol-btn.is-urgent.speaking{
+    animation:urgentPop 0.5s ease 2;
+    box-shadow:0 0 0 4px var(--c-urgente), var(--shadow-lift);
+  }
+  @keyframes urgentPop{
+    0%{transform:scale(1);}
+    40%{transform:scale(1.1);}
+    100%{transform:scale(1);}
+  }
+  #coreBar .core-chip.is-urgent{
+    border-color:var(--c-urgente); color:var(--c-urgente);
+  }
+
+  /* Faixa que aparece grande na tela quando um símbolo de urgência é tocado —
+     ajuda quem está por perto (mas não olhando pro tablet) a perceber na hora */
+  #urgentBanner{
+    position:fixed;
+    left:50%; top:18px;
+    transform:translate(-50%, -140%);
+    z-index:80;
+    background:var(--c-urgente);
+    color:#fff;
+    padding:16px 28px;
+    border-radius:var(--radius-lg);
+    font-size:22px;
+    font-weight:700;
+    display:flex; align-items:center; gap:10px;
+    box-shadow:var(--shadow-lift);
+    transition:transform 0.25s ease;
+    pointer-events:none;
+    max-width:90vw;
+    text-align:center;
+  }
+  #urgentBanner.show{
+    transform:translate(-50%, 0);
+  }
+
   @media (min-width: 900px){
     #grid{ grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); }
     .symbol-btn{ min-height:260px; }
@@ -435,6 +536,8 @@
   </div>
 </div>
 
+<div id="urgentBanner"></div>
+
 <div id="appHeader">
   <div class="logo">💬</div>
   <h1>Minha Voz</h1>
@@ -449,6 +552,7 @@
   <button id="lockBtn" title="Tela travada — toque para desbloquear">🔒</button>
 </div>
 
+<div id="coreBar"></div>
 <div id="favRow"></div>
 <div id="categoryBar"></div>
 <div id="gridViewport">
@@ -621,9 +725,6 @@
   const auth = getAuth(app);
 
   // ---------- App Check (proteção contra bots/uso indevido da API) ----------
-  // IMPORTANTE: troque 'COLOQUE_SUA_CHAVE_RECAPTCHA_AQUI' pela chave de site que você
-  // vai gerar no passo 4 do guia (Firebase Console → App Check → reCAPTCHA v3).
-  // Enquanto não trocar, o App Check fica inativo e o resto do app funciona normal.
   const RECAPTCHA_SITE_KEY = 'COLOQUE_SUA_CHAVE_RECAPTCHA_AQUI';
   if(RECAPTCHA_SITE_KEY && RECAPTCHA_SITE_KEY !== 'COLOQUE_SUA_CHAVE_RECAPTCHA_AQUI'){
     try{
@@ -645,8 +746,6 @@
   }
 
   // ---------- Login anônimo (obrigatório pelas novas regras do Firestore) ----------
-  // O app continua sem nenhuma tela de "login" visível pra criança — isso acontece
-  // por trás, automaticamente, assim que a página abre.
   function garantirLoginAnonimo(){
     return new Promise((resolve, reject) => {
       onAuthStateChanged(auth, (user) => {
@@ -677,7 +776,6 @@
   }catch(e){
     window.__firebase.authOk = false;
     authLoadingMsg.textContent = 'Não foi possível conectar com segurança. Verifique sua internet e recarregue a página.';
-    // não esconde a tela de carregando — evita usar o app sem autenticação válida
     throw e;
   }
 
@@ -745,6 +843,14 @@
     'oi':'👋','tchau':'🙌','por favor':'🙏','obrigado':'🙏'
   };
 
+  // Palavras de urgência/desconforto — ganham selo visual, faixa grande na tela,
+  // fala repetida e vibração (se o aparelho suportar), pra chamar mais atenção
+  // de quem está por perto e não olhando pro tablet naquele momento.
+  const URGENT_WORDS = ['ajuda', 'banheiro', 'parar', 'com dor', 'com medo'];
+  function isUrgentWord(word){
+    return URGENT_WORDS.includes((word || '').toLowerCase());
+  }
+
   const STORAGE_KEY = 'caa_vocab_v2';
   const GOALS_KEY = 'caa_goals_v1';
   const VOICE_KEY = 'caa_voice_v1';
@@ -780,7 +886,9 @@
   const categoryBar = document.getElementById('categoryBar');
   const sentenceStrip = document.getElementById('sentenceStrip');
   const favRow = document.getElementById('favRow');
+  const coreBar = document.getElementById('coreBar');
   const headerSub = document.getElementById('headerSub');
+  const urgentBanner = document.getElementById('urgentBanner');
 
   async function fetchPictoId(word){
     try{
@@ -916,6 +1024,7 @@
     goals = await loadGoals();
     const savedVoice = await loadVoiceSettings();
     if(savedVoice) voiceSettings = { ...voiceSettings, ...savedVoice };
+    renderCoreBar();
     renderFavRow();
     renderGrid();
   }
@@ -935,6 +1044,35 @@
         goToCategory(cat.id);
       });
       categoryBar.appendChild(btn);
+    });
+  }
+
+  // ---------- Barra fixa de núcleo: sempre visível, em qualquer categoria aberta ----------
+  // Resolve o maior ponto de esforço motor: palavras-ponte como "eu", "quero", "não",
+  // "mais" e as de urgência não exigem mais trocar de página pra serem alcançadas.
+  function renderCoreBar(){
+    coreBar.innerHTML = '';
+    const coreWords = vocab.filter(v => v.cat === 'nucleo');
+    if(coreWords.length === 0){ coreBar.style.display = 'none'; return; }
+    coreBar.style.display = 'flex';
+
+    const label = document.createElement('span');
+    label.className = 'core-label';
+    label.textContent = '⭐ Sempre aqui';
+    coreBar.appendChild(label);
+
+    coreWords.forEach(item => {
+      const chip = document.createElement('button');
+      chip.className = 'core-chip' + (isUrgentWord(item.word) ? ' is-urgent' : '');
+      const src = symbolImageSrc(item);
+      if(src){
+        const img = document.createElement('img'); img.src = src; chip.appendChild(img);
+      }else{
+        const e = document.createElement('span'); e.className='fallback-emoji'; e.textContent = FALLBACK_EMOJI[item.word]||'❔'; chip.appendChild(e);
+      }
+      const span = document.createElement('span'); span.textContent = item.word; chip.appendChild(span);
+      chip.addEventListener('click', () => selectSymbol(item, chip));
+      coreBar.appendChild(chip);
     });
   }
 
@@ -969,7 +1107,7 @@
     const info = catInfo(activeCat);
     items.forEach(item => {
       const btn = document.createElement('button');
-      btn.className = 'symbol-btn' + (item.photo ? ' has-photo' : '');
+      btn.className = 'symbol-btn' + (item.photo ? ' has-photo' : '') + (isUrgentWord(item.word) ? ' is-urgent' : '');
       btn.style.borderTopColor = info.color;
       btn.setAttribute('aria-label', item.word);
 
@@ -1163,7 +1301,7 @@
     return [...ptVoices].sort((a,b) => scoreVoice(b) - scoreVoice(a))[0];
   }
 
-  function speak(text, chipEl){
+  function speak(text, chipEl, onEnd){
     if(!('speechSynthesis' in window)){
       headerSub.textContent = 'Este navegador não suporta fala.';
       return;
@@ -1177,13 +1315,27 @@
     utter.volume = 1;
     if(chipEl){
       chipEl.classList.add('speaking');
-      utter.onend = () => chipEl.classList.remove('speaking');
+      utter.onend = () => { chipEl.classList.remove('speaking'); if(onEnd) onEnd(); };
+    }else if(onEnd){
+      utter.onend = onEnd;
     }
     utter.onerror = (e) => {
       headerSub.textContent = 'Erro ao falar: ' + (e.error || 'desconhecido');
     };
     speechSynthesis.cancel();
     speechSynthesis.speak(utter);
+  }
+
+  // Reforço extra pra palavras de urgência: fala de novo depois de uma pausa curta,
+  // mostra a faixa grande na tela, e vibra o aparelho se o navegador suportar.
+  function triggerUrgentReinforcement(word){
+    if('vibrate' in navigator){
+      try{ navigator.vibrate([80, 60, 80]); }catch(e){ /* ok */ }
+    }
+    urgentBanner.textContent = '❗ ' + word;
+    urgentBanner.classList.add('show');
+    setTimeout(() => urgentBanner.classList.remove('show'), 2600);
+    setTimeout(() => { speak(word); }, 900);
   }
 
   if('speechSynthesis' in window){
@@ -1262,6 +1414,7 @@
       setTimeout(() => sourceEl.classList.remove('speaking'), 500);
     }
     speak(item.word);
+    if(isUrgentWord(item.word)) triggerUrgentReinforcement(item.word);
     item.count = (item.count || 0) + 1;
     sentence.push(item);
     renderSentence();
@@ -1273,13 +1426,19 @@
     speak(item.word, chipEl);
   }
 
+  // Remove só UM item da frase (toque no "x" do card), sem apagar a frase inteira
+  function removeFromSentence(index){
+    sentence.splice(index, 1);
+    renderSentence();
+  }
+
   function renderSentence(){
     sentenceStrip.innerHTML = '';
     if(sentence.length === 0){
       sentenceStrip.innerHTML = '<span class="sentence-empty">Toque nos símbolos para formar uma frase</span>';
       return;
     }
-    sentence.forEach(item => {
+    sentence.forEach((item, idx) => {
       const chip = document.createElement('div');
       chip.className = 'sentence-chip';
       chip.style.borderColor = catInfo(item.cat).color;
@@ -1292,6 +1451,18 @@
       const span = document.createElement('span'); span.textContent = item.word; chip.appendChild(span);
       chip.style.cursor = 'pointer';
       chip.addEventListener('click', () => selectSymbolReplay(item, chip));
+
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'chip-remove';
+      removeBtn.textContent = '✕';
+      removeBtn.title = 'Remover só esta palavra';
+      removeBtn.setAttribute('aria-label', 'Remover ' + item.word + ' da frase');
+      removeBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        removeFromSentence(idx);
+      });
+      chip.appendChild(removeBtn);
+
       sentenceStrip.appendChild(chip);
     });
   }
@@ -1350,6 +1521,7 @@
     overlay.style.display = 'none';
     renderCategoryBar();
     renderGrid();
+    renderCoreBar();
     renderFavRow();
     headerSub.textContent = vocab.length + ' símbolos';
   }
@@ -1710,6 +1882,7 @@
     document.getElementById('newWord').value = '';
     status.textContent = imgId ? `"${word}" adicionado com símbolo.` : `"${word}" adicionado sem símbolo (usará ícone genérico).`;
     renderVocabList();
+    renderCoreBar();
   });
 
   function compressImage(file, maxSize, quality){
@@ -1807,6 +1980,7 @@
             photoStatus.textContent = '✅ Foto salva!';
             photoStatus.style.color = 'var(--c-acoes)';
             renderGrid();
+            renderCoreBar();
             renderFavRow();
             setTimeout(() => renderVocabList(), 600);
           }else{
@@ -1833,6 +2007,7 @@
           await saveVocabItem(item);
           renderVocabList();
           renderGrid();
+          renderCoreBar();
           renderFavRow();
         });
         row.appendChild(removePhotoBtn);
@@ -1852,6 +2027,7 @@
         vocab.splice(idx, 1);
         renderVocabList();
         renderGrid();
+        renderCoreBar();
         renderFavRow();
       });
       row.appendChild(delBtn);
