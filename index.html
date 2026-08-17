@@ -894,7 +894,7 @@
   // Impede que um novo símbolo seja disparado logo em seguida de outro
   // (ex: dedo escorregando, toque duplo sem querer). O botão fica "esperando"
   // por um instante curto antes de aceitar o próximo toque.
-  const SELECT_COOLDOWN_MS = 550;
+  const SELECT_COOLDOWN_MS = 320;
   let lastSelectTime = 0;
 
   async function sha256Hex(text){
@@ -1131,7 +1131,9 @@
   }
 
   function renderFavRow(){
-    const favs = [...vocab].filter(v => v.count > 0 && isWordActive(v)).sort((a,b) => b.count - a.count).slice(0,8);
+    // Não repete palavras que já estão fixas na barra "Sempre aqui" (núcleo) —
+    // ela já cobre isso, então aqui só mostram os favoritos das outras categorias.
+    const favs = [...vocab].filter(v => v.count > 0 && isWordActive(v) && v.cat !== 'nucleo').sort((a,b) => b.count - a.count).slice(0,8);
     favRow.innerHTML = '';
     if(favs.length === 0){ favRow.style.display = 'none'; return; }
     favRow.style.display = 'flex';
