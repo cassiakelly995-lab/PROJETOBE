@@ -581,7 +581,7 @@
     <div id="panelBody">
     <div id="pinScreen">
       <p style="font-size:14px;color:var(--ink-soft);margin:0;">Digite o PIN para configurar o vocabulário.</p>
-      <input type="password" id="pinInput" inputmode="numeric" maxlength="4" placeholder="••••">
+      <input type="password" id="pinInput" inputmode="numeric" maxlength="8" placeholder="PIN">
       <div id="pinError"></div>
       <div class="row" style="width:100%;">
         <button class="btn-secondary" id="pinCancel" style="flex:1;">Cancelar</button>
@@ -701,7 +701,7 @@
         <div id="authStatus" style="font-size:14px;font-weight:600;"></div>
 
         <label for="newPinInput">Trocar PIN do cuidador</label>
-        <input type="password" id="newPinInput" inputmode="numeric" maxlength="4" placeholder="Novo PIN de 4 dígitos">
+        <input type="password" id="newPinInput" inputmode="numeric" maxlength="8" placeholder="Novo PIN (4 a 8 dígitos)">
         <div class="row">
           <button class="btn-primary" id="changePinBtn">Salvar novo PIN</button>
         </div>
@@ -1442,8 +1442,8 @@
   document.getElementById('changePinBtn').addEventListener('click', async () => {
     const statusEl = document.getElementById('pinChangeStatus');
     const newPin = document.getElementById('newPinInput').value.trim();
-    if(!/^\d{4}$/.test(newPin)){
-      statusEl.textContent = 'Digite exatamente 4 números.';
+    if(!/^\d{4,8}$/.test(newPin)){
+      statusEl.textContent = 'Digite entre 4 e 8 números.';
       statusEl.style.color = '#c0392b';
       return;
     }
