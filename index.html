@@ -817,12 +817,21 @@
   const db = getFirestore(app);
   const auth = getAuth(app);
 
+  // ---------- Proteção contra sessão de cuidador "grudada" ----------
+  // O Firebase por padrão lembra login entre recarregamentos de página.
+  // Isso é ruim aqui: se o tablet travar/reiniciar com o painel de cuidador
+  // aberto, a próxima pessoa a abrir o app poderia continuar com permissão
+  // de escrita, sem digitar o PIN de novo. Por isso, toda vez que a página
+  // carrega, a gente força sair de qualquer sessão anterior antes de tudo,
+  // garantindo que o app SEMPRE comece no modo "só leitura" (anônimo).
+  try{ await signOut(auth); }catch(e){ /* ok, não tinha sessão mesmo */ }
+
   // ---------- Credenciais do cuidador ----------
   // TROQUE AQUI pelo e-mail e senha que você cadastrou no Firebase Authentication
   // (aba Usuários). É esse login que dá permissão de ESCRITA no Firestore
   // depois que o PIN é digitado corretamente no app.
   const CAREGIVER_EMAIL = 'cassiakelly995@gmail.com';
-  const CAREGIVER_PASSWORD = 'Lulu1305@';
+  const CAREGIVER_PASSWORD = 'Detergente1305@';
 
   // ---------- App Check (proteção contra bots/uso indevido da API) ----------
   const RECAPTCHA_SITE_KEY = '6LfFz4wtAAAAADkV4fgH3c27RtThQVhJ4dIgsBB1';
