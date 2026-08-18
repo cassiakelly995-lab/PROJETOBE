@@ -724,7 +724,7 @@
     enableIndexedDbPersistence
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import {
-    getAuth, signInAnonymously, onAuthStateChanged
+    getAuth, signInAnonymously, signInWithEmailAndPassword, signOut, onAuthStateChanged
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import {
     initializeAppCheck, ReCaptchaV3Provider
@@ -743,6 +743,13 @@
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
   const auth = getAuth(app);
+
+  // ---------- Credenciais do cuidador ----------
+  // TROQUE AQUI pelo e-mail e senha que você cadastrou no Firebase Authentication
+  // (aba Usuários). É esse login que dá permissão de ESCRITA no Firestore
+  // depois que o PIN é digitado corretamente no app.
+  const CAREGIVER_EMAIL = 'cassiakelly995@gmail.com';
+  const CAREGIVER_PASSWORD = 'Lulu1305@';
 
   // ---------- App Check (proteção contra bots/uso indevido da API) ----------
   const RECAPTCHA_SITE_KEY = 'COLOQUE_SUA_CHAVE_RECAPTCHA_AQUI';
@@ -765,7 +772,7 @@
     console.warn('Persistência offline não pôde ser ativada:', e.code || e.message);
   }
 
-  // ---------- Login anônimo (obrigatório pelas novas regras do Firestore) ----------
+  // ---------- Login anônimo (só dá acesso de LEITURA, pelo novo regras do Firestore) ----------
   function garantirLoginAnonimo(){
     return new Promise((resolve, reject) => {
       onAuthStateChanged(auth, (user) => {
@@ -781,12 +788,38 @@
     });
   }
 
+  // ---------- Login de cuidador (e-mail/senha) — dá acesso de ESCRITA ----------
+  // Chamado só depois que o PIN é digitado certo na interface (ver tryPin() no outro script).
+  async function loginCuidador(){
+    if(!CAREGIVER_EMAIL || CAREGIVER_EMAIL === 'COLOQUE_O_EMAIL_DO_CUIDADOR_AQUI'){
+      throw new Error('Credenciais do cuidador não configuradas no código.');
+    }
+    const cred = await signInWithEmailAndPassword(auth, CAREGIVER_EMAIL, CAREGIVER_PASSWORD);
+    return cred.user;
+  }
+
+  // Volta pro login anônimo (só leitura) quando o cuidador fecha o painel,
+  // pra não deixar o dispositivo com permissão de escrita aberta indefinidamente.
+  async function logoutCuidador(){
+    try{
+      await signOut(auth);
+    }catch(e){ console.warn('Falha ao encerrar sessão do cuidador', e); }
+    try{
+      await signInAnonymously(auth);
+    }catch(e){ console.error('Falha ao voltar para login anônimo', e); }
+  }
+
+  function isCaregiverLoggedIn(){
+    return !!(auth.currentUser && !auth.currentUser.isAnonymous);
+  }
+
   const VOCAB_COLLECTION = 'minha_voz_vocabulario';
   const GOALS_COLLECTION = 'minha_voz_metas';
 
   window.__firebase = {
     db, collection, doc, getDocs, setDoc, deleteDoc,
-    VOCAB_COLLECTION, GOALS_COLLECTION, auth
+    VOCAB_COLLECTION, GOALS_COLLECTION, auth,
+    loginCuidador, logoutCuidador, isCaregiverLoggedIn
   };
 
   const authLoadingMsg = document.getElementById('authLoadingMsg');
@@ -1480,7 +1513,8 @@
     if(authEl){
       const fb = window.__firebase;
       const uid = fb && fb.auth && fb.auth.currentUser ? fb.auth.currentUser.uid : null;
-      authEl.textContent = uid ? ('🟢 Autenticado (login anônimo ativo)') : '🟠 Ainda conectando…';
+      const isCaregiver = fb && fb.isCaregiverLoggedIn && fb.isCaregiverLoggedIn();
+      authEl.textContent = uid ? (isCaregiver ? '🟢 Autenticado como cuidador (escrita liberada)' : '🟡 Autenticado anônimo (só leitura)') : '🟠 Ainda conectando…';
     }
   }
   window.addEventListener('online', updateConnStatus);
@@ -1505,7 +1539,13 @@
     sentence.push(item);
     renderSentence();
     renderFavRow();
-    await saveVocabItem(item);
+    // Nota: contador de uso (item.count) é gravado localmente na tela do Bê,
+    // mas só é persistido no Firestore quando o cuidador estiver logado
+    // (evita erro de permissão silencioso enquanto o Bê usa o app sozinho).
+    const fb = await waitForFirebase();
+    if(fb.isCaregiverLoggedIn && fb.isCaregiverLoggedIn()){
+      await saveVocabItem(item);
+    }
   }
 
   function selectSymbolReplay(item, chipEl){
@@ -1586,25 +1626,45 @@
 
   async function tryPin(){
     const ok = await verifyPin(pinInput.value);
-    if(ok){
+    if(!ok){
+      pinError.textContent = 'PIN incorreto.';
+      return;
+    }
+
+    pinError.textContent = '';
+
+    if(pinAction === 'unlock'){
+      pinScreen.style.display = 'none';
+      overlay.style.display = 'none';
+      deactivateLock();
+      return;
+    }
+
+    // PIN certo: agora faz login de cuidador de verdade no Firebase,
+    // pra ganhar permissão de ESCRITA de acordo com as regras do Firestore.
+    // Sem isso, o PIN só travaria a tela, mas o banco de dados continuaria
+    // aceitando escrita de qualquer visitante anônimo.
+    pinError.textContent = 'Entrando…';
+    try{
+      const fb = await waitForFirebase();
+      await fb.loginCuidador();
       pinScreen.style.display = 'none';
       pinError.textContent = '';
-      if(pinAction === 'unlock'){
-        overlay.style.display = 'none';
-        deactivateLock();
-      }else{
-        editScreen.style.display = 'block';
-        document.getElementById('panelTitle').textContent = 'Painel do cuidador / terapeuta';
-        showTab('vocab');
-        renderVocabList();
-      }
-    }else{
-      pinError.textContent = 'PIN incorreto.';
+      editScreen.style.display = 'block';
+      document.getElementById('panelTitle').textContent = 'Painel do cuidador / terapeuta';
+      showTab('vocab');
+      renderVocabList();
+    }catch(e){
+      console.error('Falha no login de cuidador', e);
+      pinError.textContent = 'PIN certo, mas o login de segurança falhou. Verifique a internet ou avise quem configurou o app.';
     }
   }
 
   function closeCaregiverPanel(){
     overlay.style.display = 'none';
+    // Volta pro login anônimo (só leitura) ao sair do painel, pra não deixar
+    // o dispositivo com permissão de escrita aberta enquanto o Bê usa o app.
+    waitForFirebase().then(fb => { if(fb.logoutCuidador) fb.logoutCuidador(); });
     renderCategoryBar();
     renderGrid();
     renderCoreBar();
