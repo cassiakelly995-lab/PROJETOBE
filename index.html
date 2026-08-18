@@ -439,7 +439,7 @@
   }
   #caregiverPanel{
     background:#fff; border-radius:24px; padding:0;
-    width:min(480px, 92vw); max-height:86vh; overflow-y:auto;
+    width:min(640px, 94vw); max-height:90vh; overflow-y:auto;
     font-family:inherit;
     box-shadow:0 24px 60px rgba(20,10,40,0.35);
     animation:panelIn 0.22s cubic-bezier(.2,.9,.3,1);
@@ -523,6 +523,7 @@
   }
   #tabVocabBtn.active{background:var(--c-nucleo); color:#fff; box-shadow:0 3px 10px rgba(124,79,214,0.35);}
   #tabGoalsBtn.active{background:var(--c-acoes); color:#fff; box-shadow:0 3px 10px rgba(46,139,70,0.35);}
+  #tabNotesBtn.active{background:var(--c-social); color:#fff; box-shadow:0 3px 10px rgba(194,62,130,0.35);}
   #tabVoiceBtn.active{background:var(--c-descritivos); color:#fff; box-shadow:0 3px 10px rgba(47,111,209,0.35);}
   #tabDiagBtn.active{background:var(--c-pessoas); color:#fff; box-shadow:0 3px 10px rgba(201,148,0,0.35);}
 
@@ -553,6 +554,19 @@
   .goal-progress-fill{height:100%; background:linear-gradient(90deg, var(--c-acoes), #26a35c); border-radius:999px;}
   .goal-progress-label{font-size:12px; color:var(--ink-soft); margin-top:5px; font-weight:600;}
   .goal-delete{background:none; border:none; color:var(--c-urgente); font-size:12px; cursor:pointer; float:right; font-weight:700;}
+
+  /* ---------- ANOTAÇÕES DO CUIDADOR ---------- */
+  .note-card{
+    border:none; border-left:4px solid var(--c-social); border-radius:14px;
+    padding:14px 16px; margin-bottom:10px; background:var(--bg);
+    box-shadow:0 1px 4px rgba(40,35,25,0.05);
+  }
+  .note-card .note-date{font-size:11px; font-weight:700; color:var(--c-social); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:4px;}
+  .note-card .note-text{font-size:14px; line-height:1.5; white-space:pre-wrap;}
+  .note-card .note-actions{display:flex; gap:10px; margin-top:8px;}
+  .note-card .note-actions button{background:none; border:none; font-size:12px; font-weight:700; cursor:pointer; padding:0;}
+  .note-card .note-edit-btn{color:var(--c-descritivos);}
+  .note-card .note-delete-btn{color:var(--c-urgente);}
 
   /* ---------- TELA DE CARREGANDO LOGIN ---------- */
   #authLoadingMsg{
@@ -643,8 +657,19 @@
       <div class="tab-row" style="flex-wrap:wrap;">
         <button class="tab-btn active" id="tabVocabBtn">📚 Vocabulário</button>
         <button class="tab-btn" id="tabGoalsBtn">🎯 Metas</button>
+        <button class="tab-btn" id="tabNotesBtn">📝 Anotações</button>
         <button class="tab-btn" id="tabVoiceBtn">🔊 Voz</button>
         <button class="tab-btn" id="tabDiagBtn">🛠️ Diagnóstico</button>
+      </div>
+
+      <div class="row" style="margin-top:14px;">
+        <button class="btn-secondary" id="genReportBtn" style="flex:1;">📄 Gerar relatório completo (metas + anotações)</button>
+      </div>
+      <div id="reportBox" style="display:none; margin-top:12px; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-md); padding:14px;">
+        <textarea id="reportText" readonly style="width:100%; min-height:220px; border:none; background:transparent; font-family:inherit; font-size:13px; line-height:1.5; resize:vertical;"></textarea>
+        <div class="row">
+          <button class="btn-secondary" id="copyReportBtn" style="flex:1;">📋 Copiar texto</button>
+        </div>
       </div>
 
       <div id="vocabTab">
@@ -686,17 +711,20 @@
           <button class="btn-primary" id="addGoalBtn">Criar meta</button>
         </div>
 
+        <div id="goalsList" style="margin-top:18px;"></div>
+      </div>
+
+      <div id="notesTab" style="display:none;">
+        <h2>Anotações do cuidador</h2>
+        <p style="font-size:13px;color:var(--ink-soft);margin-top:-8px;">Registre observações do dia a dia: comportamento, humor, contexto — tudo que ajuda a entender o progresso do Bê.</p>
+
+        <label for="noteText">Nova anotação</label>
+        <textarea id="noteText" placeholder="ex: hoje o Bê usou 'quero' e 'mais' sozinho na hora do lanche…" style="width:100%; min-height:90px; padding:11px 13px; border:1.5px solid var(--border); border-radius:12px; font-size:15px; font-family:inherit; resize:vertical;"></textarea>
         <div class="row">
-          <button class="btn-secondary" id="genReportBtn" style="flex:1;">📄 Gerar relatório (pra levar pra fono)</button>
-        </div>
-        <div id="reportBox" style="display:none; margin-top:12px; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-md); padding:14px;">
-          <textarea id="reportText" readonly style="width:100%; min-height:220px; border:none; background:transparent; font-family:inherit; font-size:13px; line-height:1.5; resize:vertical;"></textarea>
-          <div class="row">
-            <button class="btn-secondary" id="copyReportBtn" style="flex:1;">📋 Copiar texto</button>
-          </div>
+          <button class="btn-primary" id="addNoteBtn">Salvar anotação</button>
         </div>
 
-        <div id="goalsList" style="margin-top:18px;"></div>
+        <div id="notesList" style="margin-top:18px;"></div>
       </div>
 
       <div id="voiceTab" style="display:none;">
@@ -860,10 +888,11 @@
 
   const VOCAB_COLLECTION = 'minha_voz_vocabulario';
   const GOALS_COLLECTION = 'minha_voz_metas';
+  const NOTES_COLLECTION = 'minha_voz_anotacoes';
 
   window.__firebase = {
     db, collection, doc, getDocs, setDoc, deleteDoc,
-    VOCAB_COLLECTION, GOALS_COLLECTION, auth,
+    VOCAB_COLLECTION, GOALS_COLLECTION, NOTES_COLLECTION, auth,
     loginCuidador, logoutCuidador, isCaregiverLoggedIn
   };
 
@@ -996,6 +1025,7 @@
 
   let vocab = [];
   let goals = [];
+  let notes = [];
   let activeCat = 'nucleo';
   let sentence = [];
   let voiceSettings = { voiceURI: null, rate: 0.95, pitch: 1.0 };
@@ -1132,6 +1162,37 @@
     }
   }
 
+  async function loadNotes(){
+    try{
+      const fb = await waitForFirebase();
+      const snap = await fb.getDocs(fb.collection(fb.db, fb.NOTES_COLLECTION));
+      const items = [];
+      snap.forEach(d => items.push(d.data()));
+      return items;
+    }catch(e){
+      console.error('Falha ao carregar anotações do Firestore', e);
+      return [];
+    }
+  }
+
+  async function saveNoteItem(note){
+    try{
+      const fb = await waitForFirebase();
+      await fb.setDoc(fb.doc(fb.db, fb.NOTES_COLLECTION, note.id), note);
+      return true;
+    }catch(e){
+      console.error('Falha ao salvar anotação no Firestore', e);
+      return false;
+    }
+  }
+
+  async function deleteNoteItem(id){
+    try{
+      const fb = await waitForFirebase();
+      await fb.deleteDoc(fb.doc(fb.db, fb.NOTES_COLLECTION, id));
+    }catch(e){ console.error('Falha ao excluir anotação no Firestore', e); }
+  }
+
   async function init(){
     renderCategoryBar();
     populateCategorySelect();
@@ -1154,6 +1215,7 @@
 
     headerSub.textContent = vocab.filter(isWordActive).length + ' símbolos ativos';
     goals = await loadGoals();
+    notes = await loadNotes();
     const savedVoice = await loadVoiceSettings();
     if(savedVoice) voiceSettings = { ...voiceSettings, ...savedVoice };
     renderCoreBar();
@@ -1824,6 +1886,7 @@
     const tabs = {
       vocab:  { btn:'tabVocabBtn',  panel:'vocabTab'  },
       goals:  { btn:'tabGoalsBtn',  panel:'goalsTab'  },
+      notes:  { btn:'tabNotesBtn',  panel:'notesTab'  },
       voice:  { btn:'tabVoiceBtn',  panel:'voiceTab'  },
       diag:   { btn:'tabDiagBtn',   panel:'diagTab'   },
     };
@@ -1833,12 +1896,14 @@
       document.getElementById(tabs[key].panel).style.display = isActive ? 'block' : 'none';
     });
     if(tab === 'goals') renderGoalsList();
+    if(tab === 'notes') renderNotesList();
     if(tab === 'voice') populateVoiceSelect();
     if(tab === 'diag') updateConnStatus();
   }
 
   document.getElementById('tabVocabBtn').addEventListener('click', () => showTab('vocab'));
   document.getElementById('tabGoalsBtn').addEventListener('click', () => showTab('goals'));
+  document.getElementById('tabNotesBtn').addEventListener('click', () => showTab('notes'));
   document.getElementById('tabVoiceBtn').addEventListener('click', () => showTab('voice'));
   document.getElementById('tabDiagBtn').addEventListener('click', () => showTab('diag'));
 
@@ -1894,6 +1959,71 @@
 
   document.getElementById('testVoiceBtn').addEventListener('click', () => {
     speak('Oi! Essa é a minha voz agora.');
+  });
+
+  function formatNoteDate(iso){
+    try{
+      return new Date(iso).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' }) + ' às ' +
+             new Date(iso).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+    }catch(e){ return iso; }
+  }
+
+  function renderNotesList(){
+    const list = document.getElementById('notesList');
+    list.innerHTML = '';
+    if(notes.length === 0){
+      list.innerHTML = '<p style="font-size:13px;color:var(--ink-soft);">Nenhuma anotação registrada ainda.</p>';
+      return;
+    }
+    const sorted = [...notes].sort((a,b) => new Date(b.date) - new Date(a.date));
+    sorted.forEach(note => {
+      const card = document.createElement('div');
+      card.className = 'note-card';
+      card.innerHTML = `
+        <div class="note-date">${escapeHtml(formatNoteDate(note.date))}</div>
+        <div class="note-text">${escapeHtml(note.text)}</div>
+        <div class="note-actions">
+          <button class="note-edit-btn" data-note="${escapeHtml(note.id)}">✏️ Editar</button>
+          <button class="note-delete-btn" data-note="${escapeHtml(note.id)}">🗑️ Excluir</button>
+        </div>
+      `;
+      list.appendChild(card);
+    });
+
+    list.querySelectorAll('.note-edit-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-note');
+        const note = notes.find(n => n.id === id);
+        if(!note) return;
+        const updated = prompt('Editar anotação:', note.text);
+        if(updated === null || updated.trim() === '') return;
+        note.text = updated.trim();
+        await saveNoteItem(note);
+        renderNotesList();
+      });
+    });
+
+    list.querySelectorAll('.note-delete-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-note');
+        const confirmed = confirm('Excluir esta anotação? Essa ação não pode ser desfeita.');
+        if(!confirmed) return;
+        await deleteNoteItem(id);
+        notes = notes.filter(n => n.id !== id);
+        renderNotesList();
+      });
+    });
+  }
+
+  document.getElementById('addNoteBtn').addEventListener('click', async () => {
+    const textEl = document.getElementById('noteText');
+    const text = textEl.value.trim();
+    if(!text) return;
+    const newNote = { id: Date.now().toString(), date: new Date().toISOString(), text };
+    notes.push(newNote);
+    textEl.value = '';
+    await saveNoteItem(newNote);
+    renderNotesList();
   });
 
   document.getElementById('addGoalBtn').addEventListener('click', async () => {
@@ -1971,6 +2101,17 @@
       }
       lines.push('');
     });
+
+    if(notes.length > 0){
+      lines.push('='.repeat(48));
+      lines.push('OBSERVAÇÕES DO CUIDADOR');
+      lines.push('='.repeat(48));
+      const sortedNotes = [...notes].sort((a,b) => new Date(a.date) - new Date(b.date));
+      sortedNotes.forEach(note => {
+        lines.push(`[${formatDate(note.date)}] ${note.text}`);
+        lines.push('');
+      });
+    }
 
     lines.push('='.repeat(48));
     lines.push('Relatório gerado automaticamente pelo app "Minha Voz". Níveis de apoio seguem terminologia ABA/DTT (Independente, Dica gestual, Dica verbal, Dica física, Sem resposta).');
