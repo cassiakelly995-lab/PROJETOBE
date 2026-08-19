@@ -1309,34 +1309,58 @@
     }catch(e){ console.error('Falha ao excluir anotação no Firestore', e); }
   }
 
-  async function init(){
+  function renderImmediateFallback(){
+    // Mostra o app funcionando NA HORA, sem esperar rede nenhuma. Isso garante
+    // que o Bê sempre consegue usar o app, mesmo se o Firebase estiver lento,
+    // bloqueado, ou fora do ar. Depois disso, o app tenta sincronizar por trás.
+    vocab = DEFAULT_VOCAB.map(v => ({ ...v, imgId:null, count:0, active: STARTER_WORDS.includes(v.word) }));
+    goals = [];
+    notes = [];
     renderCategoryBar();
     populateCategorySelect();
-
-    let saved = await withTimeout(loadVocab(), 8000, null);
-    if(saved && saved.length){
-      vocab = saved.map(v => ({ count:0, ...v }));
-    }else{
-      vocab = DEFAULT_VOCAB.map(v => ({
-        ...v,
-        imgId:null,
-        count:0,
-        // Começa só com o "kit inicial" visível pro Bê; o resto fica oculto
-        // até o cuidador decidir liberar, pela aba de Vocabulário.
-        active: STARTER_WORDS.includes(v.word)
-      }));
-      await Promise.all(vocab.map(async item => { item.imgId = await fetchPictoId(item.word); }));
-      await saveVocab();
-    }
-
-    headerSub.textContent = vocab.filter(isWordActive).length + ' símbolos ativos';
-    goals = await withTimeout(loadGoals(), 8000, []);
-    notes = await withTimeout(loadNotes(), 8000, []);
-    const savedVoice = await loadVoiceSettings();
-    if(savedVoice) voiceSettings = { ...voiceSettings, ...savedVoice };
     renderCoreBar();
     renderFavRow();
     renderGrid();
+    headerSub.textContent = 'Pronto para uso';
+  }
+
+  async function init(){
+    renderImmediateFallback();
+
+    const TIMEOUT_MARK = '__timeout__';
+    try{
+      const saved = await withTimeout(loadVocab(), 4000, TIMEOUT_MARK);
+      if(saved !== TIMEOUT_MARK && saved && saved.length){
+        vocab = saved.map(v => ({ count:0, ...v }));
+        headerSub.textContent = vocab.filter(isWordActive).length + ' símbolos ativos';
+        renderCoreBar();
+        renderFavRow();
+        renderGrid();
+      }else if(saved === null){
+        // Firestore respondeu e confirmou que está vazio (primeiro uso de verdade,
+        // não erro/lentidão) — aí sim vale criar o vocabulário padrão com imagens.
+        await Promise.all(vocab.map(async item => { item.imgId = await fetchPictoId(item.word); }));
+        await saveVocab();
+        headerSub.textContent = vocab.filter(isWordActive).length + ' símbolos ativos';
+        renderCoreBar();
+        renderFavRow();
+        renderGrid();
+      }
+
+      const [loadedGoals, loadedNotes] = await Promise.all([
+        withTimeout(loadGoals(), 4000, []),
+        withTimeout(loadNotes(), 4000, [])
+      ]);
+      goals = loadedGoals;
+      notes = loadedNotes;
+    }catch(e){
+      console.error('Sincronização com Firebase falhou, seguindo em modo local.', e);
+    }
+
+    try{
+      const savedVoice = await loadVoiceSettings();
+      if(savedVoice) voiceSettings = { ...voiceSettings, ...savedVoice };
+    }catch(e){ /* ok, mantém padrão */ }
   }
 
   function catInfo(catId){ return CATEGORIES.find(c => c.id === catId) || CATEGORIES[0]; }
@@ -2438,21 +2462,4 @@
 
     filtered.forEach((item) => {
       const idx = vocab.indexOf(item);
-      const row = document.createElement('div');
-      row.className = 'vocab-item' + (isWordActive(item) ? '' : ' is-inactive');
-      row.style.flexWrap = 'wrap';
-      const catLabel = catInfo(item.cat).label;
-
-      const thumb = document.createElement('span');
-      thumb.style.cssText = 'width:32px;height:32px;border-radius:8px;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;background:var(--bg-deep);margin-right:6px;flex-shrink:0;';
-      if(item.photo){
-        thumb.innerHTML = `<img src="${escapeHtml(item.photo)}" style="width:100%;height:100%;object-fit:cover;">`;
-      }else if(item.imgId){
-        thumb.innerHTML = `<img src="${escapeHtml(pictoUrl(item.imgId))}" style="width:80%;height:80%;object-fit:contain;">`;
-      }else{
-        thumb.textContent = FALLBACK_EMOJI[item.word] || '❔';
-      }
-
-      const label = document.createElement('span');
-      label.style.flex = '1';
-      label.innerHTML = `${escapeHtml(item.word)} <small style="color:var(--ink-soft);">(
+      const row = document.
