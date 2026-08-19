@@ -786,6 +786,17 @@
       </div>
     </div>
     </div>
+</div>
+
+<div id="customModalOverlay" style="position:fixed; inset:0; background:rgba(28,22,38,0.55); backdrop-filter:blur(2px); display:none; align-items:center; justify-content:center; z-index:90; padding:16px;">
+  <div id="customModalPanel" style="background:#fff; border-radius:20px; width:min(420px,92vw); box-shadow:0 24px 60px rgba(20,10,40,0.35); padding:24px; animation:panelIn 0.2s cubic-bezier(.2,.9,.3,1);">
+    <h3 id="customModalTitle" style="margin:0 0 10px; font-size:17px; font-weight:800; color:var(--ink); font-family:inherit;"></h3>
+    <p id="customModalMessage" style="margin:0 0 14px; font-size:14px; color:var(--ink-soft); line-height:1.5;"></p>
+    <textarea id="customModalInput" style="display:none; width:100%; min-height:100px; padding:11px 13px; border:1.5px solid var(--border); border-radius:12px; font-size:15px; font-family:inherit; resize:vertical; margin-bottom:14px;"></textarea>
+    <div style="display:flex; gap:10px;">
+      <button id="customModalCancel" style="flex:1; border:none; border-radius:999px; padding:13px 16px; font-weight:700; font-size:14px; cursor:pointer; background:var(--bg-deep); color:var(--ink); font-family:inherit;">Cancelar</button>
+      <button id="customModalConfirm" style="flex:1; border:none; border-radius:999px; padding:13px 16px; font-weight:700; font-size:14px; cursor:pointer; color:#fff; font-family:inherit;">Confirmar</button>
+    </div>
   </div>
 </div>
 
@@ -942,6 +953,54 @@
     const div = document.createElement('div');
     div.textContent = (str === null || str === undefined) ? '' : String(str);
     return div.innerHTML;
+  }
+
+  // ---------- Modal customizado (substitui prompt()/confirm() nativos do navegador) ----------
+  // As caixinhas padrão do navegador quebram a identidade visual do painel e podem
+  // se comportar de forma inconsistente em alguns tablets/PWAs. Esse modal segue o
+  // mesmo estilo do resto do app.
+  const customModalOverlay = document.getElementById('customModalOverlay');
+  const customModalTitle = document.getElementById('customModalTitle');
+  const customModalMessage = document.getElementById('customModalMessage');
+  const customModalInput = document.getElementById('customModalInput');
+  const customModalCancel = document.getElementById('customModalCancel');
+  const customModalConfirm = document.getElementById('customModalConfirm');
+
+  function openModal({ title, message, showInput=false, inputValue='', confirmLabel='Confirmar', confirmColor='var(--c-acoes)', danger=false }){
+    return new Promise((resolve) => {
+      customModalTitle.textContent = title || '';
+      customModalMessage.textContent = message || '';
+      customModalMessage.style.display = message ? 'block' : 'none';
+      customModalInput.style.display = showInput ? 'block' : 'none';
+      customModalInput.value = inputValue || '';
+      customModalConfirm.textContent = confirmLabel;
+      customModalConfirm.style.background = danger ? 'var(--c-urgente)' : confirmColor;
+      customModalOverlay.style.display = 'flex';
+      if(showInput) setTimeout(() => customModalInput.focus(), 50);
+
+      function cleanup(result){
+        customModalOverlay.style.display = 'none';
+        customModalConfirm.removeEventListener('click', onConfirm);
+        customModalCancel.removeEventListener('click', onCancel);
+        customModalOverlay.removeEventListener('click', onOverlay);
+        resolve(result);
+      }
+      function onConfirm(){ cleanup(showInput ? customModalInput.value : true); }
+      function onCancel(){ cleanup(showInput ? null : false); }
+      function onOverlay(e){ if(e.target === customModalOverlay) onCancel(); }
+
+      customModalConfirm.addEventListener('click', onConfirm);
+      customModalCancel.addEventListener('click', onCancel);
+      customModalOverlay.addEventListener('click', onOverlay);
+    });
+  }
+
+  function showConfirmModal(message, title='Confirmar ação'){
+    return openModal({ title, message, showInput:false, confirmLabel:'Sim, confirmar', danger:true });
+  }
+
+  function showPromptModal(message, defaultValue, title='Editar'){
+    return openModal({ title, message, showInput:true, inputValue:defaultValue, confirmLabel:'Salvar', confirmColor:'var(--c-descritivos)' });
   }
 
   const CATEGORIES = [
@@ -2004,7 +2063,7 @@
         const id = btn.getAttribute('data-note');
         const note = notes.find(n => n.id === id);
         if(!note) return;
-        const updated = prompt('Editar anotação:', note.text);
+        const updated = await showPromptModal('Altere o texto da anotação abaixo.', note.text, 'Editar anotação');
         if(updated === null || updated.trim() === '') return;
         note.text = updated.trim();
         await saveNoteItem(note);
@@ -2015,7 +2074,7 @@
     list.querySelectorAll('.note-delete-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const id = btn.getAttribute('data-note');
-        const confirmed = confirm('Excluir esta anotação? Essa ação não pode ser desfeita.');
+        const confirmed = await showConfirmModal('Excluir esta anotação? Essa ação não pode ser desfeita.', 'Excluir anotação');
         if(!confirmed) return;
         await deleteNoteItem(id);
         notes = notes.filter(n => n.id !== id);
@@ -2202,7 +2261,7 @@
       btn.addEventListener('click', async () => {
         const id = btn.getAttribute('data-goal');
         const goal = goals.find(g => g.id === id);
-        const confirmed = confirm(`Excluir a meta "${goal ? goal.title : ''}"? Isso apaga todo o histórico de tentativas dela.`);
+        const confirmed = await showConfirmModal(`Excluir a meta "${goal ? goal.title : ''}"? Isso apaga todo o histórico de tentativas dela.`, 'Excluir meta');
         if(!confirmed) return;
         try{
           const fb = await waitForFirebase();
@@ -2403,36 +2462,5 @@
       delBtn.className = 'btn-danger';
       delBtn.style.padding = '4px 10px'; delBtn.style.fontSize = '12px';
       delBtn.addEventListener('click', async () => {
-        const confirmed = confirm(`Remover "${item.word}" do vocabulário? Isso apaga também a foto, se tiver. Se preferir só esconder sem apagar, use o botão "Ativo/Oculto".`);
-        if(!confirmed) return;
-        try{
-          const fb = await waitForFirebase();
-          await fb.deleteDoc(fb.doc(fb.db, fb.VOCAB_COLLECTION, slugify(item.word)));
-        }catch(err){ console.error('Falha ao excluir palavra no Firestore', err); }
-        vocab.splice(idx, 1);
-        renderVocabList();
-        renderGrid();
-        renderCoreBar();
-        renderFavRow();
-      });
-      row.appendChild(delBtn);
-      list.appendChild(row);
-    });
-  }
-
-  window.addEventListener('firebase-ready', () => {
-    init();
-  });
-  if(window.__firebaseReady){ init(); }
-})();
-
-if('serviceWorker' in navigator){
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(err => {
-      console.warn('Service worker não pôde ser registrado (ok em ambiente de teste local):', err);
-    });
-  });
-}
-</script>
-</body>
-</html>
+        const confirmed = await showConfirmModal(`Remover "${item.word}" do vocabulário? Isso apaga também a foto, se tiver. Se preferir só esconder sem apagar, use o botão "Ativo/Oculto".`, 'Remover palavra');
+        if(!confirmed) ret
