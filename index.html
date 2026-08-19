@@ -593,6 +593,15 @@
 </script>
 
 <div id="authLoadingMsg">Conectando com segurança…</div>
+<script>
+  // Rede de segurança independente de tudo: não importa o que aconteça com o
+  // Firebase, essa tela de carregamento SEMPRE some em 3 segundos. Isso não
+  // depende de nenhuma chamada de rede, só de um cronômetro simples.
+  setTimeout(function(){
+    var el = document.getElementById('authLoadingMsg');
+    if(el) el.style.display = 'none';
+  }, 3000);
+</script>
 
 <!-- ---------- TELA DE CIÊNCIA / TRANSPARÊNCIA ---------- -->
 <div id="consentOverlay">
@@ -945,13 +954,23 @@
   };
 
   const authLoadingMsg = document.getElementById('authLoadingMsg');
-  try{
-    await garantirLoginAnonimo();
+
+  // Limite de tempo pro login anônimo: se o Firebase não responder (nem sucesso,
+  // nem erro) em 5 segundos, o app segue em frente mesmo assim, escondendo essa
+  // tela e deixando o app funcionar no modo local (definido no outro script).
+  function comLimiteDeTempo(promessa, ms){
+    return Promise.race([
+      promessa.then(v => ({ ok:true, valor:v })).catch(err => ({ ok:false, erro:err })),
+      new Promise(resolve => setTimeout(() => resolve({ ok:false, timeout:true }), ms))
+    ]);
+  }
+
+  const resultadoLogin = await comLimiteDeTempo(garantirLoginAnonimo(), 5000);
+  if(resultadoLogin.ok){
     window.__firebase.authOk = true;
-  }catch(e){
+  }else{
     window.__firebase.authOk = false;
-    authLoadingMsg.textContent = 'Não foi possível conectar com segurança. Verifique sua internet e recarregue a página.';
-    throw e;
+    console.warn('Login anônimo não respondeu a tempo (ou falhou) — app seguindo em modo local.');
   }
 
   authLoadingMsg.style.display = 'none';
@@ -2438,28 +2457,4 @@
   let vocabFilter = '';
   document.getElementById('vocabSearch').addEventListener('input', (e) => {
     vocabFilter = e.target.value.trim().toLowerCase();
-    renderVocabList();
-  });
-
-  function renderVocabList(){
-    const list = document.getElementById('vocabList');
-    const countLabel = document.getElementById('vocabCount');
-    let base = showInactiveInList ? vocab : vocab.filter(isWordActive);
-    const filtered = vocabFilter
-      ? base.filter(v => v.word.toLowerCase().includes(vocabFilter))
-      : base;
-
-    const activeTotal = vocab.filter(isWordActive).length;
-    countLabel.textContent = vocabFilter
-      ? `${filtered.length} resultado(s) de ${base.length} palavra(s) exibida(s)`
-      : `${activeTotal} palavra(s) ativa(s) de ${vocab.length} no total`;
-
-    list.innerHTML = '';
-    if(filtered.length === 0){
-      list.innerHTML = '<p style="font-size:13px;color:var(--ink-soft);">Nenhuma palavra encontrada.</p>';
-      return;
-    }
-
-    filtered.forEach((item) => {
-      const idx = vocab.indexOf(item);
-      const row = document.
+    ren
