@@ -578,6 +578,20 @@
 </head>
 <body>
 
+<div id="debugBanner" style="display:none; position:fixed; top:0; left:0; right:0; background:#c0392b; color:#fff; padding:14px; font-family:monospace; font-size:12px; z-index:9999; white-space:pre-wrap; word-break:break-word;"></div>
+<script>
+  window.addEventListener('error', function(e){
+    var b = document.getElementById('debugBanner');
+    b.style.display = 'block';
+    b.textContent = 'ERRO: ' + e.message + ' (linha ' + e.lineno + ')\n' + (e.error && e.error.stack ? e.error.stack.slice(0,300) : '');
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    var b = document.getElementById('debugBanner');
+    b.style.display = 'block';
+    b.textContent = 'ERRO (promise): ' + (e.reason && e.reason.message ? e.reason.message : e.reason);
+  });
+</script>
+
 <div id="authLoadingMsg">Conectando com segurança…</div>
 
 <!-- ---------- TELA DE CIÊNCIA / TRANSPARÊNCIA ---------- -->
@@ -2440,21 +2454,4 @@
       toggleBtn.textContent = isWordActive(item) ? '👁️ Ativo' : '🙈 Oculto';
       toggleBtn.className = 'btn-secondary';
       toggleBtn.style.cssText = 'padding:4px 8px;font-size:12px;';
-      toggleBtn.title = isWordActive(item) ? 'Ocultar da tela do Bê (sem apagar)' : 'Mostrar na tela do Bê';
-      toggleBtn.addEventListener('click', async () => {
-        item.active = !isWordActive(item);
-        await saveVocabItem(item);
-        renderVocabList();
-        renderGrid();
-        renderCoreBar();
-        renderFavRow();
-        headerSub.textContent = vocab.filter(isWordActive).length + ' símbolos ativos';
-      });
-      row.appendChild(toggleBtn);
-
-      const photoBtn = document.createElement('label');
-      photoBtn.textContent = '📷';
-      photoBtn.title = 'Adicionar foto real (câmera ou galeria)';
-      photoBtn.style.cssText = 'cursor:pointer;padding:4px 8px;border-radius:8px;background:var(--bg-deep);font-size:14px;';
-      const photoInput = document.createElement('input');
-      photoInput.typ
+      toggleBtn.title = isWordActive(item) ? 'Oculta
