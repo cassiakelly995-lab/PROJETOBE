@@ -1178,6 +1178,16 @@
     });
   }
 
+  // Evita que o app trave pra sempre esperando o Firebase responder (rede lenta,
+  // instável, ou qualquer bloqueio silencioso). Se não vier resposta em 8 segundos,
+  // segue em frente com um valor de reserva em vez de ficar preso em "Carregando…".
+  function withTimeout(promise, ms, fallbackValue){
+    return Promise.race([
+      promise,
+      new Promise(resolve => setTimeout(() => resolve(fallbackValue), ms))
+    ]);
+  }
+
   async function loadVocab(){
     try{
       const fb = await waitForFirebase();
@@ -1303,7 +1313,7 @@
     renderCategoryBar();
     populateCategorySelect();
 
-    let saved = await loadVocab();
+    let saved = await withTimeout(loadVocab(), 8000, null);
     if(saved && saved.length){
       vocab = saved.map(v => ({ count:0, ...v }));
     }else{
@@ -1320,8 +1330,8 @@
     }
 
     headerSub.textContent = vocab.filter(isWordActive).length + ' símbolos ativos';
-    goals = await loadGoals();
-    notes = await loadNotes();
+    goals = await withTimeout(loadGoals(), 8000, []);
+    notes = await withTimeout(loadNotes(), 8000, []);
     const savedVoice = await loadVoiceSettings();
     if(savedVoice) voiceSettings = { ...voiceSettings, ...savedVoice };
     renderCoreBar();
@@ -2445,13 +2455,4 @@
 
       const label = document.createElement('span');
       label.style.flex = '1';
-      label.innerHTML = `${escapeHtml(item.word)} <small style="color:var(--ink-soft);">(${escapeHtml(catLabel)} · usado ${item.count||0}x${item.photo ? ' · 📷 foto própria' : ''}${isWordActive(item) ? '' : ' · oculto'})</small>`;
-
-      row.appendChild(thumb);
-      row.appendChild(label);
-
-      const toggleBtn = document.createElement('button');
-      toggleBtn.textContent = isWordActive(item) ? '👁️ Ativo' : '🙈 Oculto';
-      toggleBtn.className = 'btn-secondary';
-      toggleBtn.style.cssText = 'padding:4px 8px;font-size:12px;';
-      toggleBtn.title = isWordActive(item) ? 'Oculta
+      label.innerHTML = `${escapeHtml(item.word)} <small style="color:var(--ink-soft);">(
