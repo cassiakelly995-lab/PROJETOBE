@@ -158,6 +158,12 @@
   }
   .sentence-chip .chip-remove:active{transform:scale(0.9);}
 
+  /* Modo criança: some com o "x" pequeno de cada card da frase.
+     Só o botão grande "Apagar" no topo consegue limpar a frase. */
+  body.child-mode .sentence-chip .chip-remove{
+    display:none;
+  }
+
   .bar-btn{
     border:none;
     border-radius:var(--radius-md);
@@ -653,6 +659,11 @@
         <button class="btn-primary" id="lockActivateBtn" style="padding:8px 12px;font-size:13px;">Ativar</button>
       </div>
 
+      <div class="toggle-row" style="background:var(--c-nucleo-soft); padding:10px 12px; border-radius:12px;">
+        <span>🧒 Modo criança (esconde o "x" de apagar palavra)</span>
+        <input type="checkbox" id="childModeToggle" style="width:22px;height:22px;">
+      </div>
+
       <div class="tab-row" style="flex-wrap:wrap;">
         <button class="tab-btn active" id="tabVocabBtn">📚 Vocabulário</button>
         <button class="tab-btn" id="tabGoalsBtn">🎯 Metas</button>
@@ -1052,6 +1063,7 @@
   const STORAGE_KEY = 'caa_vocab_v2';
   const GOALS_KEY = 'caa_goals_v1';
   const VOICE_KEY = 'caa_voice_v1';
+  const CHILD_MODE_KEY = 'caa_child_mode';
   const PIN_HASH_KEY = 'caa_pin_hash';
   const DEFAULT_PIN_HASH = '9122ce7553b8a1a6d3be05aca2f7abd167683a0505da45323ea9b4fc4d54f1a5';
 
@@ -1085,6 +1097,18 @@
   let voiceSettings = { voiceURI: null, rate: 0.95, pitch: 1.0 };
   let showInactiveInList = false;
   let vocabFilter = '';
+  let childModeActive = true;
+  try{
+    const storedChildMode = localStorage.getItem(CHILD_MODE_KEY);
+    childModeActive = storedChildMode === null ? true : storedChildMode === '1';
+  }catch(e){ /* ok, mantém padrão ligado */ }
+
+  function applyChildModeClass(){
+    document.body.classList.toggle('child-mode', childModeActive);
+    const toggleEl = document.getElementById('childModeToggle');
+    if(toggleEl) toggleEl.checked = childModeActive;
+  }
+  applyChildModeClass();
 
   const grid = document.getElementById('grid');
   const categoryBar = document.getElementById('categoryBar');
@@ -1775,6 +1799,10 @@
       chip.style.cursor = 'pointer';
       chip.addEventListener('click', () => selectSymbolReplay(item, chip));
 
+      // O "x" pequeno de remover palavra individual só aparece fora do
+      // modo criança (veja regra CSS body.child-mode .chip-remove).
+      // Com o modo criança ligado, a única forma de apagar é o botão
+      // grande "⌫ Apagar" na barra de cima, que limpa a frase toda.
       const removeBtn = document.createElement('button');
       removeBtn.className = 'chip-remove';
       removeBtn.textContent = '✕';
@@ -1845,6 +1873,7 @@
       pinError.textContent = '';
       editScreen.style.display = 'block';
       document.getElementById('panelTitle').textContent = 'Painel do cuidador / terapeuta';
+      applyChildModeClass();
       showTab('vocab');
       renderVocabList();
     }catch(e){
@@ -1865,6 +1894,12 @@
   document.getElementById('closeCaregiver').addEventListener('click', closeCaregiverPanel);
   document.getElementById('panelCloseX').addEventListener('click', closeCaregiverPanel);
   overlay.addEventListener('click', (e) => { if(e.target === overlay) closeCaregiverPanel(); });
+
+  document.getElementById('childModeToggle').addEventListener('change', (e) => {
+    childModeActive = e.target.checked;
+    try{ localStorage.setItem(CHILD_MODE_KEY, childModeActive ? '1' : '0'); }catch(err){ /* ok */ }
+    applyChildModeClass();
+  });
 
   const LOCK_KEY = 'caa_lock_mode';
   let lockModeActive = false;
