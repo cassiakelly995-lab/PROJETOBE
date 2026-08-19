@@ -767,6 +767,12 @@
           4. Toque em algumas palavras: elas ficam guardadas e sincronizam sozinhas quando a internet voltar.
         </div>
 
+        <div class="toggle-row" style="background:var(--c-nucleo-soft); padding:10px 12px; border-radius:12px;">
+          <span>💾 Baixar backup de tudo (vocabulário, metas, anotações)</span>
+          <button class="btn-secondary" id="exportBackupBtn" style="padding:8px 12px;font-size:13px;">Baixar</button>
+        </div>
+        <div id="exportStatus" style="font-size:12px;color:var(--ink-soft);margin-top:6px;"></div>
+
         <label for="connStatus" style="margin-top:18px;">Conexão</label>
         <div id="connStatus" style="font-size:14px;font-weight:600;"></div>
 
@@ -841,8 +847,15 @@
   // TROQUE AQUI pelo e-mail e senha que você cadastrou no Firebase Authentication
   // (aba Usuários). É esse login que dá permissão de ESCRITA no Firestore
   // depois que o PIN é digitado corretamente no app.
-  const CAREGIVER_EMAIL = 'cassiakelly995@gmail.com';
-  const CAREGIVER_PASSWORD = 'Detergente1305@';
+  // ---------- Credenciais do cuidador (ofuscadas em Base64) ----------
+  // AVISO IMPORTANTE: Base64 NÃO é criptografia — é só codificação, reversível
+  // por qualquer pessoa em segundos (ex: função atob() no console do navegador).
+  // Isso impede que a senha apareça "de bandeja" em texto puro pra quem só olha
+  // o código-fonte por cima, mas NÃO protege contra alguém que saiba o que está
+  // fazendo. A única forma de esconder isso de verdade seria mover o login pra
+  // um servidor (fora do alcance de um app 100% client-side como este).
+  const CAREGIVER_EMAIL = atob('Y2Fzc2lha2VsbHk5OTVAZ21haWwuY29t');
+  const CAREGIVER_PASSWORD = atob('RGV0ZXJnZW50ZTEzMDVA');
 
   // ---------- App Check (proteção contra bots/uso indevido da API) ----------
   const RECAPTCHA_SITE_KEY = '6LfFz4wtAAAAADkV4fgH3c27RtThQVhJ4dIgsBB1';
@@ -976,22 +989,32 @@
       customModalConfirm.textContent = confirmLabel;
       customModalConfirm.style.background = danger ? 'var(--c-urgente)' : confirmColor;
       customModalOverlay.style.display = 'flex';
-      if(showInput) setTimeout(() => customModalInput.focus(), 50);
+      if(showInput){
+        setTimeout(() => customModalInput.focus(), 50);
+      }else{
+        setTimeout(() => customModalCancel.focus(), 50);
+      }
 
       function cleanup(result){
         customModalOverlay.style.display = 'none';
         customModalConfirm.removeEventListener('click', onConfirm);
         customModalCancel.removeEventListener('click', onCancel);
         customModalOverlay.removeEventListener('click', onOverlay);
+        document.removeEventListener('keydown', onKeydown);
         resolve(result);
       }
       function onConfirm(){ cleanup(showInput ? customModalInput.value : true); }
       function onCancel(){ cleanup(showInput ? null : false); }
       function onOverlay(e){ if(e.target === customModalOverlay) onCancel(); }
+      function onKeydown(e){
+        if(e.key === 'Escape') onCancel();
+        if(e.key === 'Enter' && !showInput) onConfirm();
+      }
 
       customModalConfirm.addEventListener('click', onConfirm);
       customModalCancel.addEventListener('click', onCancel);
       customModalOverlay.addEventListener('click', onOverlay);
+      document.addEventListener('keydown', onKeydown);
     });
   }
 
@@ -1652,6 +1675,35 @@
     }catch(e){
       diagStatus.textContent = '❌ Firebase falhou: ' + (e.code || e.message || 'erro desconhecido');
       console.error('Teste do Firebase falhou', e);
+    }
+  });
+
+  document.getElementById('exportBackupBtn').addEventListener('click', () => {
+    const statusEl = document.getElementById('exportStatus');
+    try{
+      const backup = {
+        geradoEm: new Date().toISOString(),
+        app: 'Minha Voz',
+        vocabulario: vocab,
+        metas: goals,
+        anotacoes: notes
+      };
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type:'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dataStr = new Date().toISOString().slice(0,10);
+      a.href = url;
+      a.download = `minha-voz-backup-${dataStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      statusEl.textContent = '✅ Backup baixado! Guarde esse arquivo em local seguro (Google Drive, e-mail, etc).';
+      statusEl.style.color = 'var(--c-acoes)';
+    }catch(e){
+      console.error('Falha ao gerar backup', e);
+      statusEl.textContent = '❌ Não foi possível gerar o backup.';
+      statusEl.style.color = '#c0392b';
     }
   });
 
@@ -2404,63 +2456,4 @@
       photoBtn.title = 'Adicionar foto real (câmera ou galeria)';
       photoBtn.style.cssText = 'cursor:pointer;padding:4px 8px;border-radius:8px;background:var(--bg-deep);font-size:14px;';
       const photoInput = document.createElement('input');
-      photoInput.type = 'file';
-      photoInput.accept = 'image/*';
-      photoInput.style.display = 'none';
-
-      const photoStatus = document.createElement('div');
-      photoStatus.style.cssText = 'width:100%;font-size:11px;margin-top:2px;';
-
-      photoInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if(!file) return;
-        photoStatus.textContent = '⏳ Salvando foto…';
-        photoStatus.style.color = 'var(--ink-soft)';
-        try{
-          const dataUrl = await compressImage(file);
-          item.photo = dataUrl;
-          const ok = await saveVocabItem(item);
-          if(ok){
-            photoStatus.textContent = '✅ Foto salva!';
-            photoStatus.style.color = 'var(--c-acoes)';
-            renderGrid();
-            renderCoreBar();
-            renderFavRow();
-            setTimeout(() => renderVocabList(), 600);
-          }else{
-            photoStatus.textContent = '❌ Não conseguiu salvar no Firebase (veja as permissões do Firestore).';
-            photoStatus.style.color = '#c0392b';
-          }
-        }catch(err){
-          console.error('Falha ao processar foto', err);
-          photoStatus.textContent = '❌ Erro ao processar a foto: ' + (err.message || err);
-          photoStatus.style.color = '#c0392b';
-        }
-      });
-      photoBtn.appendChild(photoInput);
-      row.appendChild(photoBtn);
-      row.appendChild(photoStatus);
-
-      if(item.photo){
-        const removePhotoBtn = document.createElement('button');
-        removePhotoBtn.textContent = '🗑️ foto';
-        removePhotoBtn.className = 'btn-secondary';
-        removePhotoBtn.style.cssText = 'padding:4px 8px;font-size:12px;';
-        removePhotoBtn.addEventListener('click', async () => {
-          delete item.photo;
-          await saveVocabItem(item);
-          renderVocabList();
-          renderGrid();
-          renderCoreBar();
-          renderFavRow();
-        });
-        row.appendChild(removePhotoBtn);
-      }
-
-      const delBtn = document.createElement('button');
-      delBtn.textContent = 'Remover';
-      delBtn.className = 'btn-danger';
-      delBtn.style.padding = '4px 10px'; delBtn.style.fontSize = '12px';
-      delBtn.addEventListener('click', async () => {
-        const confirmed = await showConfirmModal(`Remover "${item.word}" do vocabulário? Isso apaga também a foto, se tiver. Se preferir só esconder sem apagar, use o botão "Ativo/Oculto".`, 'Remover palavra');
-        if(!confirmed) ret
+      photoInput.type = 'file
