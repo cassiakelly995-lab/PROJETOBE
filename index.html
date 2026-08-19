@@ -25,7 +25,6 @@
     --shadow-soft:0 2px 10px rgba(40,35,25,0.06);
     --shadow-lift:0 6px 20px rgba(40,35,25,0.12);
 
-    /* Fitzgerald Key - código de cores padrão em CAA (funcional, não decorativo) */
     --c-nucleo:#7c4fd6;
     --c-nucleo-soft:#efe7fb;
     --c-pessoas:#c99400;
@@ -57,7 +56,6 @@
     overflow:hidden;
   }
 
-  /* ---------- TELA DE CIÊNCIA / TRANSPARÊNCIA (primeiro acesso) ---------- */
   #consentOverlay{
     position:fixed; inset:0; background:var(--bg); z-index:200;
     display:none; align-items:center; justify-content:center; padding:20px;
@@ -78,7 +76,6 @@
     background:var(--c-nucleo); color:#fff; cursor:pointer; font-family:inherit;
   }
 
-  /* ---------- CABEÇALHO ---------- */
   #appHeader{
     display:flex;
     align-items:center;
@@ -95,7 +92,6 @@
   #appHeader h1{font-size:17px;margin:0;font-weight:700;}
   #appHeader .sub{font-size:12px;color:var(--ink-soft);margin-left:auto;white-space:nowrap;}
 
-  /* ---------- BARRA DE FRASE ---------- */
   #sentenceBar{
     display:flex;
     align-items:center;
@@ -144,7 +140,6 @@
   .sentence-chip span{font-size:11px;text-align:center;line-height:1.1;margin-top:2px;}
   .sentence-empty{color:#999;font-size:14px;padding-left:8px;}
 
-  /* Botão de remover só aquele item da frase, sem apagar tudo */
   .sentence-chip .chip-remove{
     position:absolute;
     top:-6px; right:-6px;
@@ -182,7 +177,6 @@
   #clearBtn{background:var(--c-urgente-soft); color:var(--c-urgente); border:2px solid var(--c-urgente);}
   #settingsBtn{background:transparent; color:#b9b4aa; font-size:20px; width:52px; padding:0;}
 
-  /* ---------- MODO TRAVADO (KIOSK) ---------- */
   #lockBtn{
     display:none; border:none; background:transparent; color:#b9b4aa;
     font-size:18px; width:44px; height:44px; cursor:pointer; flex-shrink:0;
@@ -200,7 +194,6 @@
     background:var(--c-nucleo); color:#fff; cursor:pointer; font-family:inherit;
   }
 
-  /* ---------- BARRA FIXA DE NÚCLEO (sempre visível, em qualquer categoria) ---------- */
   #coreBar{
     display:flex;
     align-items:center;
@@ -230,7 +223,6 @@
   #coreBar .core-chip img{width:28px;height:28px;object-fit:contain;}
   #coreBar .core-chip .fallback-emoji{font-size:18px;}
 
-  /* ---------- FAVORITOS ---------- */
   #favRow{
     display:flex; gap:8px; padding:10px 16px 0; overflow-x:auto;
   }
@@ -243,7 +235,6 @@
   #favRow .fav-chip img{width:26px;height:26px;object-fit:contain;}
   #favRow .fav-chip .fallback-emoji{font-size:18px;}
 
-  /* ---------- CATEGORIAS ---------- */
   #categoryBar{
     display:flex;
     gap:8px;
@@ -265,7 +256,6 @@
   .cat-btn:active{transform:scale(0.97);}
   .cat-btn:focus-visible{outline:3px solid var(--focus); outline-offset:2px;}
 
-  /* ---------- ÁREA DA "PÁGINA" (grade de símbolos como folha da pasta) ---------- */
   #gridViewport{
     flex:1;
     overflow:hidden;
@@ -372,8 +362,6 @@
     text-shadow:0 1px 3px rgba(0,0,0,0.5);
   }
 
-  /* Símbolos de urgência (ajuda, banheiro, parar, com dor) ganham um selo visual extra,
-     além da fala repetida e da vibração — pra chamar mais atenção de quem está perto */
   .symbol-btn.is-urgent{
     border-color:var(--c-urgente);
   }
@@ -397,8 +385,6 @@
     border-color:var(--c-urgente); color:var(--c-urgente);
   }
 
-  /* Faixa que aparece grande na tela quando um símbolo de urgência é tocado —
-     ajuda quem está por perto (mas não olhando pro tablet) a perceber na hora */
   #urgentBanner{
     position:fixed;
     left:50%; top:18px;
@@ -430,7 +416,6 @@
 
   #loadingMsg{padding:20px;color:#888;font-size:15px;}
 
-  /* ---------- MODO CUIDADOR ---------- */
   #caregiverOverlay{
     position:fixed; inset:0; background:rgba(28,22,38,0.55);
     backdrop-filter:blur(2px);
@@ -514,7 +499,6 @@
   .toggle-row{display:flex; align-items:center; justify-content:space-between; margin-top:14px;}
   .toggle-row span{font-size:14px; font-weight:600;}
 
-  /* ---------- ABAS DO PAINEL ---------- */
   .tab-row{display:flex; gap:6px; margin-bottom:6px; background:var(--bg); padding:5px; border-radius:16px;}
   .tab-btn{
     flex:1; background:transparent; color:var(--ink-soft);
@@ -527,7 +511,6 @@
   #tabVoiceBtn.active{background:var(--c-descritivos); color:#fff; box-shadow:0 3px 10px rgba(47,111,209,0.35);}
   #tabDiagBtn.active{background:var(--c-pessoas); color:#fff; box-shadow:0 3px 10px rgba(201,148,0,0.35);}
 
-  /* ---------- METAS TERAPÊUTICAS ---------- */
   .goal-card{
     border:none; border-left:4px solid var(--c-acoes); border-radius:14px;
     padding:14px 16px; margin-bottom:12px; background:var(--bg);
@@ -555,7 +538,6 @@
   .goal-progress-label{font-size:12px; color:var(--ink-soft); margin-top:5px; font-weight:600;}
   .goal-delete{background:none; border:none; color:var(--c-urgente); font-size:12px; cursor:pointer; float:right; font-weight:700;}
 
-  /* ---------- ANOTAÇÕES DO CUIDADOR ---------- */
   .note-card{
     border:none; border-left:4px solid var(--c-social); border-radius:14px;
     padding:14px 16px; margin-bottom:10px; background:var(--bg);
@@ -568,7 +550,6 @@
   .note-card .note-edit-btn{color:var(--c-descritivos);}
   .note-card .note-delete-btn{color:var(--c-urgente);}
 
-  /* ---------- TELA DE CARREGANDO LOGIN ---------- */
   #authLoadingMsg{
     position:fixed; inset:0; background:var(--bg); z-index:150;
     display:flex; align-items:center; justify-content:center;
@@ -594,16 +575,12 @@
 
 <div id="authLoadingMsg">Conectando com segurança…</div>
 <script>
-  // Rede de segurança independente de tudo: não importa o que aconteça com o
-  // Firebase, essa tela de carregamento SEMPRE some em 3 segundos. Isso não
-  // depende de nenhuma chamada de rede, só de um cronômetro simples.
   setTimeout(function(){
     var el = document.getElementById('authLoadingMsg');
     if(el) el.style.display = 'none';
   }, 3000);
 </script>
 
-<!-- ---------- TELA DE CIÊNCIA / TRANSPARÊNCIA ---------- -->
 <div id="consentOverlay">
   <div id="consentCard">
     <div class="consent-icon">💬🔒</div>
@@ -653,7 +630,6 @@
   <button id="lockUnlockBtn">Digitar PIN pra desbloquear</button>
 </div>
 
-<!-- ---------- MODO CUIDADOR ---------- -->
 <div id="caregiverOverlay">
   <div id="caregiverPanel">
     <div id="panelHeader">
@@ -831,7 +807,6 @@
 </div>
 
 <script type="module">
-  // ---------- Firebase (projeto: cassia-assistencia-v8) ----------
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import {
     getFirestore, collection, doc, getDocs, setDoc, deleteDoc,
@@ -858,30 +833,11 @@
   const db = getFirestore(app);
   const auth = getAuth(app);
 
-  // ---------- Proteção contra sessão de cuidador "grudada" ----------
-  // O Firebase por padrão lembra login entre recarregamentos de página.
-  // Isso é ruim aqui: se o tablet travar/reiniciar com o painel de cuidador
-  // aberto, a próxima pessoa a abrir o app poderia continuar com permissão
-  // de escrita, sem digitar o PIN de novo. Por isso, toda vez que a página
-  // carrega, a gente força sair de qualquer sessão anterior antes de tudo,
-  // garantindo que o app SEMPRE comece no modo "só leitura" (anônimo).
   try{ await signOut(auth); }catch(e){ /* ok, não tinha sessão mesmo */ }
 
-  // ---------- Credenciais do cuidador ----------
-  // TROQUE AQUI pelo e-mail e senha que você cadastrou no Firebase Authentication
-  // (aba Usuários). É esse login que dá permissão de ESCRITA no Firestore
-  // depois que o PIN é digitado corretamente no app.
-  // ---------- Credenciais do cuidador (ofuscadas em Base64) ----------
-  // AVISO IMPORTANTE: Base64 NÃO é criptografia — é só codificação, reversível
-  // por qualquer pessoa em segundos (ex: função atob() no console do navegador).
-  // Isso impede que a senha apareça "de bandeja" em texto puro pra quem só olha
-  // o código-fonte por cima, mas NÃO protege contra alguém que saiba o que está
-  // fazendo. A única forma de esconder isso de verdade seria mover o login pra
-  // um servidor (fora do alcance de um app 100% client-side como este).
   const CAREGIVER_EMAIL = atob('Y2Fzc2lha2VsbHk5OTVAZ21haWwuY29t');
   const CAREGIVER_PASSWORD = atob('RGV0ZXJnZW50ZTEzMDVA');
 
-  // ---------- App Check (proteção contra bots/uso indevido da API) ----------
   const RECAPTCHA_SITE_KEY = '6LfFz4wtAAAAADkV4fgH3c27RtThQVhJ4dIgsBB1';
   if(RECAPTCHA_SITE_KEY && RECAPTCHA_SITE_KEY !== 'COLOQUE_SUA_CHAVE_RECAPTCHA_AQUI'){
     try{
@@ -894,15 +850,12 @@
     }
   }
 
-  // Ativa cache offline: o app funciona (lê e escreve) sem internet,
-  // e sincroniza sozinho com o Firebase assim que a conexão voltar.
   try{
     await enableIndexedDbPersistence(db);
   }catch(e){
     console.warn('Persistência offline não pôde ser ativada:', e.code || e.message);
   }
 
-  // ---------- Login anônimo (só dá acesso de LEITURA, pelo novo regras do Firestore) ----------
   function garantirLoginAnonimo(){
     return new Promise((resolve, reject) => {
       onAuthStateChanged(auth, (user) => {
@@ -918,8 +871,6 @@
     });
   }
 
-  // ---------- Login de cuidador (e-mail/senha) — dá acesso de ESCRITA ----------
-  // Chamado só depois que o PIN é digitado certo na interface (ver tryPin() no outro script).
   async function loginCuidador(){
     if(!CAREGIVER_EMAIL || CAREGIVER_EMAIL === 'COLOQUE_O_EMAIL_DO_CUIDADOR_AQUI'){
       throw new Error('Credenciais do cuidador não configuradas no código.');
@@ -928,8 +879,6 @@
     return cred.user;
   }
 
-  // Volta pro login anônimo (só leitura) quando o cuidador fecha o painel,
-  // pra não deixar o dispositivo com permissão de escrita aberta indefinidamente.
   async function logoutCuidador(){
     try{
       await signOut(auth);
@@ -955,9 +904,6 @@
 
   const authLoadingMsg = document.getElementById('authLoadingMsg');
 
-  // Limite de tempo pro login anônimo: se o Firebase não responder (nem sucesso,
-  // nem erro) em 5 segundos, o app segue em frente mesmo assim, escondendo essa
-  // tela e deixando o app funcionar no modo local (definido no outro script).
   function comLimiteDeTempo(promessa, ms){
     return Promise.race([
       promessa.then(v => ({ ok:true, valor:v })).catch(err => ({ ok:false, erro:err })),
@@ -981,7 +927,6 @@
 <script>
 (function(){
 
-  // ---------- Tela de ciência / transparência (primeiro acesso) ----------
   const CONSENT_KEY = 'caa_consent_v1';
   const consentOverlay = document.getElementById('consentOverlay');
   let consentGiven = false;
@@ -994,18 +939,12 @@
     consentOverlay.style.display = 'none';
   });
 
-  // Escapa texto do usuário/cuidador antes de inserir via innerHTML,
-  // pra evitar que caracteres como < > & quebrem o layout do painel.
   function escapeHtml(str){
     const div = document.createElement('div');
     div.textContent = (str === null || str === undefined) ? '' : String(str);
     return div.innerHTML;
   }
 
-  // ---------- Modal customizado (substitui prompt()/confirm() nativos do navegador) ----------
-  // As caixinhas padrão do navegador quebram a identidade visual do painel e podem
-  // se comportar de forma inconsistente em alguns tablets/PWAs. Esse modal segue o
-  // mesmo estilo do resto do app.
   const customModalOverlay = document.getElementById('customModalOverlay');
   const customModalTitle = document.getElementById('customModalTitle');
   const customModalMessage = document.getElementById('customModalMessage');
@@ -1069,9 +1008,6 @@
     { id:'social',       label:'Social',       icon:'👋', color:'var(--c-social)',       soft:'var(--c-social-soft)' },
   ];
 
-  // Palavras marcadas como "starter" (active:true) — as demais entram OCULTAS
-  // por padrão, pra tela inicial ficar enxuta. O cuidador ativa mais aos poucos
-  // pelo painel, sem nunca perder a palavra (ela só fica escondida, não apagada).
   const STARTER_WORDS = ['sim','não','quero','ajuda','mais','banheiro','parar','eu','você','mamãe','papai'];
 
   const DEFAULT_VOCAB = [
@@ -1108,9 +1044,6 @@
     'oi':'👋','tchau':'🙌','por favor':'🙏','obrigado':'🙏'
   };
 
-  // Palavras de urgência/desconforto — ganham selo visual, faixa grande na tela,
-  // fala repetida e vibração (se o aparelho suportar), pra chamar mais atenção
-  // de quem está por perto e não olhando pro tablet naquele momento.
   const URGENT_WORDS = ['ajuda', 'banheiro', 'parar', 'com dor', 'com medo'];
   function isUrgentWord(word){
     return URGENT_WORDS.includes((word || '').toLowerCase());
@@ -1122,10 +1055,6 @@
   const PIN_HASH_KEY = 'caa_pin_hash';
   const DEFAULT_PIN_HASH = '9122ce7553b8a1a6d3be05aca2f7abd167683a0505da45323ea9b4fc4d54f1a5';
 
-  // ---------- Proteção contra toque acidental ----------
-  // Impede que um novo símbolo seja disparado logo em seguida de outro
-  // (ex: dedo escorregando, toque duplo sem querer). O botão fica "esperando"
-  // por um instante curto antes de aceitar o próximo toque.
   const SELECT_COOLDOWN_MS = 320;
   let lastSelectTime = 0;
 
@@ -1155,6 +1084,7 @@
   let sentence = [];
   let voiceSettings = { voiceURI: null, rate: 0.95, pitch: 1.0 };
   let showInactiveInList = false;
+  let vocabFilter = '';
 
   const grid = document.getElementById('grid');
   const categoryBar = document.getElementById('categoryBar');
@@ -1164,8 +1094,6 @@
   const headerSub = document.getElementById('headerSub');
   const urgentBanner = document.getElementById('urgentBanner');
 
-  // Trata itens antigos sem o campo "active" como visíveis (compatibilidade
-  // com o vocabulário que já estava salvo no Firebase antes dessa mudança).
   function isWordActive(item){
     return item.active !== false;
   }
@@ -1197,9 +1125,6 @@
     });
   }
 
-  // Evita que o app trave pra sempre esperando o Firebase responder (rede lenta,
-  // instável, ou qualquer bloqueio silencioso). Se não vier resposta em 8 segundos,
-  // segue em frente com um valor de reserva em vez de ficar preso em "Carregando…".
   function withTimeout(promise, ms, fallbackValue){
     return Promise.race([
       promise,
@@ -1255,14 +1180,14 @@
 
   async function loadVoiceSettings(){
     try{
-      const result = await window.storage.get(VOICE_KEY, false);
-      if(result && result.value) return JSON.parse(result.value);
+      const stored = localStorage.getItem(VOICE_KEY);
+      if(stored) return JSON.parse(stored);
     }catch(e){ /* não existe ainda */ }
     return null;
   }
 
   async function saveVoiceSettings(){
-    try{ await window.storage.set(VOICE_KEY, JSON.stringify(voiceSettings), false); }
+    try{ localStorage.setItem(VOICE_KEY, JSON.stringify(voiceSettings)); }
     catch(e){ console.error('Falha ao salvar preferências de voz', e); }
   }
 
@@ -1329,9 +1254,6 @@
   }
 
   function renderImmediateFallback(){
-    // Mostra o app funcionando NA HORA, sem esperar rede nenhuma. Isso garante
-    // que o Bê sempre consegue usar o app, mesmo se o Firebase estiver lento,
-    // bloqueado, ou fora do ar. Depois disso, o app tenta sincronizar por trás.
     vocab = DEFAULT_VOCAB.map(v => ({ ...v, imgId:null, count:0, active: STARTER_WORDS.includes(v.word) }));
     goals = [];
     notes = [];
@@ -1356,8 +1278,6 @@
         renderFavRow();
         renderGrid();
       }else if(saved === null){
-        // Firestore respondeu e confirmou que está vazio (primeiro uso de verdade,
-        // não erro/lentidão) — aí sim vale criar o vocabulário padrão com imagens.
         await Promise.all(vocab.map(async item => { item.imgId = await fetchPictoId(item.word); }));
         await saveVocab();
         headerSub.textContent = vocab.filter(isWordActive).length + ' símbolos ativos';
@@ -1400,9 +1320,6 @@
     });
   }
 
-  // ---------- Barra fixa de núcleo: sempre visível, em qualquer categoria aberta ----------
-  // Resolve o maior ponto de esforço motor: palavras-ponte como "eu", "quero", "não",
-  // "mais" e as de urgência não exigem mais trocar de página pra serem alcançadas.
   function renderCoreBar(){
     coreBar.innerHTML = '';
     const coreWords = vocab.filter(v => v.cat === 'nucleo' && isWordActive(v));
@@ -1430,8 +1347,6 @@
   }
 
   function renderFavRow(){
-    // Não repete palavras que já estão fixas na barra "Sempre aqui" (núcleo) —
-    // ela já cobre isso, então aqui só mostram os favoritos das outras categorias.
     const favs = [...vocab].filter(v => v.count > 0 && isWordActive(v) && v.cat !== 'nucleo').sort((a,b) => b.count - a.count).slice(0,8);
     favRow.innerHTML = '';
     if(favs.length === 0){ favRow.style.display = 'none'; return; }
@@ -1656,9 +1571,6 @@
     return [...ptVoices].sort((a,b) => scoreVoice(b) - scoreVoice(a))[0];
   }
 
-  // Fila de fala: evita chamar speechSynthesis.cancel() em cima de uma fala
-  // que já está tocando (principal causa de erros "interrupted" aparecerem
-  // pro usuário). Cada novo pedido espera o anterior terminar antes de falar.
   let speakQueue = Promise.resolve();
 
   function speak(text, chipEl, onEnd){
@@ -1685,9 +1597,6 @@
       if(chipEl) chipEl.classList.add('speaking');
       utter.onend = finish;
       utter.onerror = (e) => {
-        // "interrupted" e "canceled" acontecem sempre que uma fala é cortada
-        // por outra — comportamento normal do speechSynthesis, não é um erro
-        // real, então não precisa alarmar o cuidador com essa mensagem.
         if(e.error !== 'interrupted' && e.error !== 'canceled'){
           headerSub.textContent = 'Erro ao falar: ' + (e.error || 'desconhecido');
         }
@@ -1698,8 +1607,6 @@
     return speakQueue;
   }
 
-  // Reforço extra pra palavras de urgência: fala de novo depois de uma pausa curta,
-  // mostra a faixa grande na tela, e vibra o aparelho se o navegador suportar.
   function triggerUrgentReinforcement(word){
     if('vibrate' in navigator){
       try{ navigator.vibrate([80, 60, 80]); }catch(e){ /* ok */ }
@@ -1816,7 +1723,6 @@
   window.addEventListener('offline', updateConnStatus);
 
   async function selectSymbol(item, sourceEl){
-    // Proteção contra toque acidental: ignora seleção se veio logo depois da anterior.
     const now = Date.now();
     if(now - lastSelectTime < SELECT_COOLDOWN_MS){
       return;
@@ -1834,9 +1740,6 @@
     sentence.push(item);
     renderSentence();
     renderFavRow();
-    // Nota: contador de uso (item.count) é gravado localmente na tela do Bê,
-    // mas só é persistido no Firestore quando o cuidador estiver logado
-    // (evita erro de permissão silencioso enquanto o Bê usa o app sozinho).
     const fb = await waitForFirebase();
     if(fb.isCaregiverLoggedIn && fb.isCaregiverLoggedIn()){
       await saveVocabItem(item);
@@ -1847,7 +1750,6 @@
     speak(item.word, chipEl);
   }
 
-  // Remove só UM item da frase (toque no "x" do card), sem apagar a frase inteira
   function removeFromSentence(index){
     sentence.splice(index, 1);
     renderSentence();
@@ -1935,10 +1837,6 @@
       return;
     }
 
-    // PIN certo: agora faz login de cuidador de verdade no Firebase,
-    // pra ganhar permissão de ESCRITA de acordo com as regras do Firestore.
-    // Sem isso, o PIN só travaria a tela, mas o banco de dados continuaria
-    // aceitando escrita de qualquer visitante anônimo.
     pinError.textContent = 'Entrando…';
     try{
       const fb = await waitForFirebase();
@@ -1957,8 +1855,6 @@
 
   function closeCaregiverPanel(){
     overlay.style.display = 'none';
-    // Volta pro login anônimo (só leitura) ao sair do painel, pra não deixar
-    // o dispositivo com permissão de escrita aberta enquanto o Bê usa o app.
     waitForFirebase().then(fb => { if(fb.logoutCuidador) fb.logoutCuidador(); });
     renderCategoryBar();
     renderGrid();
@@ -2399,8 +2295,6 @@
     const status = document.getElementById('addStatus');
     if(!word){ status.textContent = 'Digite uma palavra.'; return; }
 
-    // Verifica se a palavra já existe no vocabulário (mesmo slug) antes de adicionar.
-    // Sem isso, a palavra aparecia duplicada na tela até recarregar a página.
     const newSlug = slugify(word);
     const existingIndex = vocab.findIndex(v => slugify(v.word) === newSlug);
 
@@ -2416,8 +2310,6 @@
       document.getElementById('newWord').value = '';
       status.textContent = `"${word}" já existia — categoria e símbolo atualizados.`;
     }else{
-      // Palavra nova entra ATIVA por padrão (quem está adicionando é o cuidador,
-      // então já é uma escolha deliberada de vocabulário funcional pro Bê).
       const newItem = { word, cat, imgId, count:0, active:true };
       vocab.push(newItem);
       await saveVocabItem(newItem);
@@ -2454,7 +2346,116 @@
     });
   }
 
-  let vocabFilter = '';
   document.getElementById('vocabSearch').addEventListener('input', (e) => {
     vocabFilter = e.target.value.trim().toLowerCase();
-    ren
+    renderVocabList();
+  });
+
+  function renderVocabList(){
+    const list = document.getElementById('vocabList');
+    const countEl = document.getElementById('vocabCount');
+    list.innerHTML = '';
+
+    let items = [...vocab];
+    if(!showInactiveInList) items = items.filter(isWordActive);
+    if(vocabFilter) items = items.filter(v => v.word.toLowerCase().includes(vocabFilter));
+    items.sort((a,b) => a.word.localeCompare(b.word, 'pt-BR'));
+
+    countEl.textContent = items.length + ' palavra(s) exibida(s) — ' + vocab.filter(isWordActive).length + ' ativa(s) no total';
+
+    if(items.length === 0){
+      list.innerHTML = '<p style="font-size:13px;color:var(--ink-soft);">Nenhuma palavra encontrada.</p>';
+      return;
+    }
+
+    items.forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'vocab-item' + (isWordActive(item) ? '' : ' is-inactive');
+
+      const info = document.createElement('div');
+      info.style.display = 'flex';
+      info.style.alignItems = 'center';
+      info.style.gap = '8px';
+      const src = symbolImageSrc(item);
+      if(src){
+        const img = document.createElement('img');
+        img.src = src; img.style.width = '32px'; img.style.height = '32px'; img.style.objectFit = 'contain'; img.style.borderRadius = '6px';
+        info.appendChild(img);
+      }
+      const label = document.createElement('span');
+      label.innerHTML = `<strong>${escapeHtml(item.word)}</strong> <span style="color:var(--ink-soft);">· ${escapeHtml(catInfo(item.cat).label)}</span>`;
+      info.appendChild(label);
+      row.appendChild(info);
+
+      const actions = document.createElement('div');
+      actions.style.display = 'flex';
+      actions.style.gap = '12px';
+      actions.style.alignItems = 'center';
+
+      const toggleBtn = document.createElement('button');
+      toggleBtn.textContent = isWordActive(item) ? '👁️ Ativa' : '🚫 Oculta';
+      toggleBtn.style.cssText = 'background:none;border:none;font-size:12px;font-weight:700;cursor:pointer;color:' + (isWordActive(item) ? 'var(--c-acoes)' : 'var(--ink-soft)') + ';';
+      toggleBtn.addEventListener('click', async () => {
+        item.active = !isWordActive(item);
+        await saveVocabItem(item);
+        renderVocabList();
+        renderCoreBar();
+        renderGrid();
+        renderFavRow();
+      });
+      actions.appendChild(toggleBtn);
+
+      const photoBtn = document.createElement('button');
+      photoBtn.textContent = '📷';
+      photoBtn.title = 'Adicionar foto real';
+      photoBtn.style.cssText = 'background:none;border:none;font-size:15px;cursor:pointer;';
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/*';
+      fileInput.style.display = 'none';
+      fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        try{
+          const dataUrl = await compressImage(file);
+          item.photo = dataUrl;
+          await saveVocabItem(item);
+          renderVocabList();
+          renderCoreBar();
+          renderGrid();
+          renderFavRow();
+        }catch(err){ console.error('Falha ao processar foto', err); }
+      });
+      photoBtn.addEventListener('click', () => fileInput.click());
+      actions.appendChild(photoBtn);
+      actions.appendChild(fileInput);
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = '🗑️';
+      deleteBtn.style.cssText = 'background:none;border:none;font-size:15px;cursor:pointer;color:var(--c-urgente);';
+      deleteBtn.addEventListener('click', async () => {
+        const confirmed = await showConfirmModal(`Excluir "${item.word}" permanentemente?`, 'Excluir palavra');
+        if(!confirmed) return;
+        try{
+          const fb = await waitForFirebase();
+          await fb.deleteDoc(fb.doc(fb.db, fb.VOCAB_COLLECTION, slugify(item.word)));
+        }catch(err){ console.error('Falha ao excluir no Firestore', err); }
+        vocab = vocab.filter(v => v !== item);
+        renderVocabList();
+        renderCoreBar();
+        renderGrid();
+        renderFavRow();
+      });
+      actions.appendChild(deleteBtn);
+
+      row.appendChild(actions);
+      list.appendChild(row);
+    });
+  }
+
+  init();
+
+})();
+</script>
+</body>
+</html>
