@@ -158,8 +158,6 @@
   }
   .sentence-chip .chip-remove:active{transform:scale(0.9);}
 
-  /* Modo criança: some com o "x" pequeno de cada card da frase.
-     Só o botão grande "Apagar" no topo consegue limpar a frase. */
   body.child-mode .sentence-chip .chip-remove{
     display:none;
   }
@@ -1156,6 +1154,13 @@
     ]);
   }
 
+  // Marcador exclusivo para diferenciar "erro/timeout ao ler" de "coleção
+  // realmente vazia". Antes, os dois casos devolviam null e o app tratava
+  // qualquer erro de leitura como "primeiro uso", regravando o vocabulário
+  // padrão por cima do que já existia no Firestore (apagando fotos, por
+  // exemplo). Só null (vazio de verdade) deve disparar o reset.
+  const VOCAB_READ_ERROR = '__vocab_read_error__';
+
   async function loadVocab(){
     try{
       const fb = await waitForFirebase();
@@ -1166,7 +1171,7 @@
       return items;
     }catch(e){
       console.error('Falha ao carregar vocabulário do Firestore', e);
-      return null;
+      return VOCAB_READ_ERROR;
     }
   }
 
@@ -1175,7 +1180,7 @@
       const fb = await waitForFirebase();
       await Promise.all(vocab.map(item => {
         const id = slugify(item.word);
-        return fb.setDoc(fb.doc(fb.db, fb.VOCAB_COLLECTION, id), item);
+        return fb.setDoc(fb.doc(fb.db, fb.VOCAB_COLLECTION, id), item, { merge:true });
       }));
       return true;
     }catch(e){
@@ -1188,7 +1193,10 @@
     try{
       const fb = await waitForFirebase();
       const id = slugify(item.word);
-      await fb.setDoc(fb.doc(fb.db, fb.VOCAB_COLLECTION, id), item);
+      // merge:true garante que campos não incluídos neste objeto (como uma
+      // foto salva anteriormente) não sejam apagados por uma regravação
+      // parcial do item.
+      await fb.setDoc(fb.doc(fb.db, fb.VOCAB_COLLECTION, id), item, { merge:true });
       return true;
     }catch(e){
       console.error('Falha ao salvar item no Firestore', e);
@@ -1231,14 +1239,14 @@
   async function saveGoals(){
     try{
       const fb = await waitForFirebase();
-      await Promise.all(goals.map(goal => fb.setDoc(fb.doc(fb.db, fb.GOALS_COLLECTION, goal.id), goal)));
+      await Promise.all(goals.map(goal => fb.setDoc(fb.doc(fb.db, fb.GOALS_COLLECTION, goal.id), goal, { merge:true })));
     }catch(e){ console.error('Falha ao salvar metas no Firestore', e); }
   }
 
   async function saveGoalItem(goal){
     try{
       const fb = await waitForFirebase();
-      await fb.setDoc(fb.doc(fb.db, fb.GOALS_COLLECTION, goal.id), goal);
+      await fb.setDoc(fb.doc(fb.db, fb.GOALS_COLLECTION, goal.id), goal, { merge:true });
       return true;
     }catch(e){
       console.error('Falha ao salvar meta no Firestore', e);
@@ -1262,7 +1270,7 @@
   async function saveNoteItem(note){
     try{
       const fb = await waitForFirebase();
-      await fb.setDoc(fb.doc(fb.db, fb.NOTES_COLLECTION, note.id), note);
+      await fb.setDoc(fb.doc(fb.db, fb.NOTES_COLLECTION, note.id), note, { merge:true });
       return true;
     }catch(e){
       console.error('Falha ao salvar anotação no Firestore', e);
@@ -1295,19 +1303,27 @@
     const TIMEOUT_MARK = '__timeout__';
     try{
       const saved = await withTimeout(loadVocab(), 4000, TIMEOUT_MARK);
-      if(saved !== TIMEOUT_MARK && saved && saved.length){
+      if(saved !== TIMEOUT_MARK && saved !== VOCAB_READ_ERROR && saved && saved.length){
         vocab = saved.map(v => ({ count:0, ...v }));
         headerSub.textContent = vocab.filter(isWordActive).length + ' símbolos ativos';
         renderCoreBar();
         renderFavRow();
         renderGrid();
       }else if(saved === null){
+        // Coleção realmente vazia (primeiro uso de verdade) — aqui sim
+        // faz sentido gravar o vocabulário padrão pela primeira vez.
         await Promise.all(vocab.map(async item => { item.imgId = await fetchPictoId(item.word); }));
         await saveVocab();
         headerSub.textContent = vocab.filter(isWordActive).length + ' símbolos ativos';
         renderCoreBar();
         renderFavRow();
         renderGrid();
+      }else if(saved === TIMEOUT_MARK || saved === VOCAB_READ_ERROR){
+        // Erro de leitura ou demora — NÃO regrava nada por cima do Firestore.
+        // O app segue com o fallback local (renderImmediateFallback) até a
+        // próxima tentativa de sincronização, sem risco de apagar dados reais.
+        console.warn('Não foi possível confirmar o vocabulário salvo (erro/timeout). Mantendo fallback local sem sobrescrever o Firestore.');
+        headerSub.textContent = 'Modo local (sem confirmar nuvem)';
       }
 
       const [loadedGoals, loadedNotes] = await Promise.all([
@@ -1667,7 +1683,7 @@
     try{
       const fb = await waitForFirebase();
       const testId = 'teste_conexao';
-      await fb.setDoc(fb.doc(fb.db, fb.VOCAB_COLLECTION, testId), { teste: true, quando: new Date().toISOString() });
+      await fb.setDoc(fb.doc(fb.db, fb.VOCAB_COLLECTION, testId), { teste: true, quando: new Date().toISOString() }, { merge:true });
       const snap = await fb.getDocs(fb.collection(fb.db, fb.VOCAB_COLLECTION));
       await fb.deleteDoc(fb.doc(fb.db, fb.VOCAB_COLLECTION, testId));
       diagStatus.textContent = '✅ Firebase conectado! (' + snap.size + ' documento(s) na coleção)';
@@ -1799,10 +1815,6 @@
       chip.style.cursor = 'pointer';
       chip.addEventListener('click', () => selectSymbolReplay(item, chip));
 
-      // O "x" pequeno de remover palavra individual só aparece fora do
-      // modo criança (veja regra CSS body.child-mode .chip-remove).
-      // Com o modo criança ligado, a única forma de apagar é o botão
-      // grande "⌫ Apagar" na barra de cima, que limpa a frase toda.
       const removeBtn = document.createElement('button');
       removeBtn.className = 'chip-remove';
       removeBtn.textContent = '✕';
