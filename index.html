@@ -1297,19 +1297,34 @@
     headerSub.textContent = 'Pronto para uso';
   }
 
-  async function init(){
-    renderImmediateFallback();
+  const TIMEOUT_MARK = '__timeout__';
 
-    const TIMEOUT_MARK = '__timeout__';
-    try{
-      const saved = await withTimeout(loadVocab(), 4000, TIMEOUT_MARK);
+  // Aplica os dados reais assim que chegarem, mesmo que a tela já esteja
+  // mostrando o vocabulário padrão de fallback. Sem isso, um aparelho novo
+  // (celular sem cache, rede mais lenta) podia ficar "preso" mostrando só o
+  // padrão pra sempre, mesmo com as fotos reais já salvas no Firestore.
+  function applyLoadedVocab(saved){
+    vocab = saved.map(v => ({ count:0, ...v }));
+    headerSub.textContent = vocab.filter(isWordActive).length + ' símbolos ativos';
+    renderCoreBar();
+    renderFavRow();
+    renderGrid();
+  }
+
+  // Tenta buscar o vocabulário salvo, aumentando o tempo de espera a cada
+  // tentativa (4s, depois 7s, depois 12s). Isso cobre o caso comum de um
+  // aparelho novo demorar mais na primeira autenticação/sincronização.
+  async function syncVocabWithRetry(maxTries){
+    const timeouts = [4000, 7000, 12000];
+    for(let attempt = 0; attempt < maxTries; attempt++){
+      const saved = await withTimeout(loadVocab(), timeouts[attempt] || 12000, TIMEOUT_MARK);
+
       if(saved !== TIMEOUT_MARK && saved !== VOCAB_READ_ERROR && saved && saved.length){
-        vocab = saved.map(v => ({ count:0, ...v }));
-        headerSub.textContent = vocab.filter(isWordActive).length + ' símbolos ativos';
-        renderCoreBar();
-        renderFavRow();
-        renderGrid();
-      }else if(saved === null){
+        applyLoadedVocab(saved);
+        return true;
+      }
+
+      if(saved === null){
         // Coleção realmente vazia (primeiro uso de verdade) — aqui sim
         // faz sentido gravar o vocabulário padrão pela primeira vez.
         await Promise.all(vocab.map(async item => { item.imgId = await fetchPictoId(item.word); }));
@@ -1318,17 +1333,30 @@
         renderCoreBar();
         renderFavRow();
         renderGrid();
-      }else if(saved === TIMEOUT_MARK || saved === VOCAB_READ_ERROR){
-        // Erro de leitura ou demora — NÃO regrava nada por cima do Firestore.
-        // O app segue com o fallback local (renderImmediateFallback) até a
-        // próxima tentativa de sincronização, sem risco de apagar dados reais.
-        console.warn('Não foi possível confirmar o vocabulário salvo (erro/timeout). Mantendo fallback local sem sobrescrever o Firestore.');
-        headerSub.textContent = 'Modo local (sem confirmar nuvem)';
+        return true;
       }
 
+      // Erro de leitura ou demora — NÃO regrava nada por cima do Firestore.
+      // Espera um pouco e tenta de novo, em vez de desistir de vez.
+      console.warn('Tentativa ' + (attempt + 1) + ' de sincronizar o vocabulário falhou (erro/timeout). Tentando de novo…');
+      headerSub.textContent = 'Sincronizando… (tentativa ' + (attempt + 1) + ' de ' + maxTries + ')';
+      if(attempt < maxTries - 1){
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
+    }
+    headerSub.textContent = 'Modo local (não foi possível confirmar a nuvem agora)';
+    return false;
+  }
+
+  async function init(){
+    renderImmediateFallback();
+
+    try{
+      await syncVocabWithRetry(3);
+
       const [loadedGoals, loadedNotes] = await Promise.all([
-        withTimeout(loadGoals(), 4000, []),
-        withTimeout(loadNotes(), 4000, [])
+        withTimeout(loadGoals(), 6000, []),
+        withTimeout(loadNotes(), 6000, [])
       ]);
       goals = loadedGoals;
       notes = loadedNotes;
